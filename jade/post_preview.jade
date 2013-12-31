@@ -1,0 +1,47 @@
+span(ng-switch, on='activity.type')
+    span(ng-switch-when="post")
+        div
+            span.markdown-inline(btf-markdown='activity.text', auto-direction='{{activity.text}}')
+    span(ng-switch-when="weight")
+        .well
+            .media
+                .media-object.pull-left
+                    span(ng-switch , on='activity.data.difference > 0')
+                      span.text-danger(ng-switch-when="true"): i.fa.fa-fw.fa-3x.fa-angle-up
+                      span.text-success(ng-switch-default): i.fa.fa-fw.fa-3x.fa-angle-down
+                .media-body
+                    span
+                        strong 
+                            span.media-header(ng-switch , on='activity.data.difference > 0')
+                              span(ng-switch-when="true") Gained 
+                              span(ng-switch-default) Lost 
+                            | {{ activity.data.difference | absolute }} kg
+                    .text-muted since {{ activity.data.previous | date }}
+    span(ng-switch-when='goal')
+        .well {{ activity.data.goal.name }}
+    span(ng-switch-when='badge')    
+        .well {{ activity.data.badge.name }}
+    span(ng-switch-when='exercise')
+        .well {{ activity.data.exercise.name }}
+    span(ng-switch-when='workout')
+        .well {{ activity.data.workout.name }}
+    span(ng-switch-when='meal')
+        .panel.panel-default
+            //- .panel-heading Lunch
+            ul.list-group(ng-controller='mealController', ng-init='meal = activity.data.meal')
+                li.list-group-item.clearfix(ng-repeat='food in meal.contents')
+                    span
+                        span {{ food.long_desc }} 
+                            span.text-muted {{ food.amount }} 
+                                small × {{ food.weight.msre_desc }}
+                        span.pull-right.text-muted {{ food.nutrients.ENERC_KCAL.nutr_quantity | number:0 }} kcal
+                .panel-footer.clearfix
+                    .clearfix
+                        span.pull-left
+                            a(href='#', ng-click='showNutrients()'): small <i class='fa fa-ellipsis-v fa-fw'></i> Show nutrients
+                        span.pull-right {{ total.ENERC_KCAL.nutr_quantity | number:0 }} kcal
+    span(ng-switch-when='food')
+        .well(ng-controller='foodController', ng-init='food = activity.data.food;')
+            div: b <a views-food food-id='{{ food._id }}'>{{ food.long_desc }}</a>
+            .text-muted {{ food.sciname }}
+            .text-muted {{ food.weight.amount }} {{ food.weight.msre_desc }} ({{ food.weight.gm_wgt }} gm)

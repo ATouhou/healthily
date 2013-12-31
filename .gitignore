@@ -1,0 +1,10 @@
+*.sublime-workspace
+*.sublime-project
+node_modules/*
+bower_components/*
+logs/*
+build/*
+icons/*
+tmp/*
+dev/*
+npm-debug.log

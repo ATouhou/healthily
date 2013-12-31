@@ -1,0 +1,10 @@
+.modal-content
+	.modal-header
+		button.close(type='button', ng-click='close()') &times;
+		h4.modal-title {{ meal.name }}
+	.modal-body
+		.clearfix(ng-repeat='nutrient in total | filter:{is_default:true}')
+			span.pull-left
+				{{ nutrient.nutrdesc }}
+			span.pull-right
+				{{ nutrient.nutr_quantity | number:2 }}

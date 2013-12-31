@@ -1,0 +1,19 @@
+mixin progress()
+    .panel
+        .panel-body
+            .progress
+                .progress-bar.progress-bar-success(style="width: 90%;")
+                .progress-bar.progress-bar-danger(style="width: 10%;")
+
+div(ng-controller="statsController")
+    ul.nav.nav-tabs.nav-justified
+        li.active: a(href='#daily_progress', data-toggle='tab') Day
+        li: a(href='#weekly_progress', data-toggle='tab') Week
+        li: a(href='#monthly_progress', data-toggle='tab') Month
+    .tab-content
+        .tab-pane.active#daily_progress
+            mixin progress
+        .tab-pane#weekly_progress
+            mixin progress
+        .tab-pane#monthly_progress
+            mixin progress

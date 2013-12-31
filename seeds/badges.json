@@ -1,0 +1,22 @@
+[
+{
+    "_id": "keepItUp",
+    "name": "Keep it up!",
+    "description": "Logged food for 2 weeks in a row"
+},
+{
+    "_id": "regular",
+    "name": "Regular",
+    "description": "Logged food for 2 weeks in a row"
+},
+{
+    "_id": "keepItUp",
+    "name": "Keep it up!",
+    "description": "Logged food for 2 weeks in a row"
+},
+{
+    "_id": "keepItUp",
+    "name": "Keep it up!",
+    "description": "Logged food for 2 weeks in a row"
+}
+]

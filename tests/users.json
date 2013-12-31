@@ -1,0 +1,89 @@
+[
+{
+    "_id": "sample_test1",
+    "username": "fwz",
+    "name": {
+        "first": "Muhammad Fawwaz",
+        "last": "Orabi"
+    },
+    "email": "name@website.com",
+    "timezone": "Asia/Damascus",
+    "height": 170,
+    "born": "1993-03-03",
+    "foods": ["11973", "11975"],
+    "exercises": [],
+    "weights": [
+    {
+        "_id": "2013-03-03",
+        "created": "2013-03-07",
+        "value_kg": 90
+    }
+    ],
+    "preferences": [
+    {
+        "_id": "lang",
+        "value": "ar"
+    },
+    {
+        "_id": "units",
+        "value": "metric"
+    }
+    ],
+    "following": ["sample_test2"]
+},
+{
+    "_id": "sample_test2",
+    "username": "myd",
+    "name": {
+        "first": "Moayyad",
+        "last": "Zakkar"
+    },
+    "email": "name2@website.com",
+    "timezone": "America/Los_Angeles",
+    "height": 178,
+    "born": "1992-01-01",
+    "foods": ["11975"],
+    "exercises": [],
+    "weights": [
+    {
+        "_id": "2013-12-03",
+        "created": "2013-12-07",
+        "updated": null,
+        "value_kg": 70
+    }
+    ],
+    "preferences": [
+    {
+        "_id": "lang",
+        "value": "en"
+    },
+    {
+        "_id": "units",
+        "value": "imperial"
+    }
+    ],
+    "following": ["sample_test1"],
+    "goals": [
+    {   "created": "2013-01-01",
+        "due": "2014-01-01",
+        "title": "Lose 5lbs by the end of the year",
+        "achieved": false,
+        "visibility": "public"
+    },
+    {   "created": "2013-01-01",
+        "due": "2014-01-01",
+        "title": "A private goal with description!",
+        "description": "Here is the description",
+        "achieved": true,
+        "visibility": "private"
+    },
+    ],
+    "streak": [
+    {
+        "_id": "weight",
+        "value": "15",
+        "last_extended": "2013-12-12"
+    }
+    ]
+}
+]

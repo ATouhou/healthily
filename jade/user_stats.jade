@@ -1,0 +1,8 @@
+.media(ng-controller='profileController')
+   a.clearfix.pull-left(href='#')
+      img.profile-picture.img-circle.media-object(ng-src='api/users/{{ user.username }}/image', alt='{{ user.name.first }}\'s profile picture')
+   .media-body
+      span.media-heading
+         a(href='#'): b {{ user.name.first }} {{ user.name.last }}
+      br
+      a.text-muted(href='#') View my profile <i class='fa fa-angle-double-right'></i>

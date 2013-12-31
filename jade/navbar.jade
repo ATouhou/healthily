@@ -1,0 +1,57 @@
+nav.navbar.navbar-default.navbar-static-top.navbar-inverse
+    .navbar-header
+        button.navbar-toggle(type='button', data-toggle='collapse', data-target='.navbar-ex1-collapse')
+            span.sr-only Toggle navigation
+            span.icon-bar
+            span.icon-bar
+            span.icon-bar
+        a.navbar-brand(href='#') Healthily
+        ul.nav.navbar-nav
+            li(ng-hide='!loading')
+                a() Loading...
+    .collapse.navbar-collapse.navbar-ex1-collapse
+        ul.nav.navbar-nav
+            li.active
+                a(href='#') Home
+            li.dropdown
+                a.dropdown-toggle(href='#', data-toggle='dropdown') Dropdown
+                ul.dropdown-menu
+                    li
+                        a(href='#') Action
+
+        ul.nav.navbar-nav.navbar-right
+            li.dropdown
+                a.dropdown-toggle(href='#')
+                    i.fa.fa-lg.fa-globe
+                    span.sr-only Notifications
+                    //- b.caret
+                ul.dropdown-menu.notification-list(ng-controller='notificationsController')
+                    li.notification-item.dropdown-header Notifications
+                    include notification_menu_items
+
+            li.dropdown
+                a.dropdown-toggle(href='#')
+                    i.fa.fa-lg.fa-cog
+                    span.sr-only Settings
+                    b.caret
+                ul.dropdown-menu
+                    li: a(href='#') My profile
+                    li.divider
+                    li: a(href='#', ng-click='showOfflineDialog()') Enable Healthily offline
+            if user
+              li.dropdown
+                a.dropdown-toggle(href='#', data-toggle='dropdown')
+                  //- i.fa.fa-user.fa-lg
+                  img.img-circle(src='/api/users/' + user.username + '/image/24', width=32, height=32)
+                  {user.fullname} 
+                  b.caret
+                ul.dropdown-menu
+                    li
+                        a(href='#') Action
+            else 
+                li.navbar-form.navbar-left
+                    div.btn-group(data-toggle='buttons')
+                        label.btn.btn-primary Sign in
+                            input(type='radio', name='options')
+                        label.btn.btn-primary Register
+                            input(type='radio', name='options')

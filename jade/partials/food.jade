@@ -1,0 +1,32 @@
+.modal-content
+    .modal-header
+        button.close(type='button', ng-click='close()') &times;
+        h4.modal-title {{ food.long_desc }}
+    .modal-body
+        .row
+            .col-md-5.input-group.unit-input
+                input.form-control(type='number', placeholder='amount', ng-model='food.amount')
+                .input-group-addon.no-padding
+                    select.unit-select(ng-model='food.weight', ng-options='weight as weight.msre_desc for weight in food.weights')
+            .col-md-3
+                {{ food.nutrients.ENERC_KCAL.nutr_quantity | number:0 }} kcal
+            .col-md-3
+                {{ food.gm_wgt | number:0 }} grams
+        .row
+            table.table.table-hover.table-striped.table-responsive(ng-show='food.amount > 0')
+                thead
+                  tr
+                     th Nutrient
+                     th Quantity
+                     th %
+                        abbr(tooltip='Dietary Reference Intake') DRI
+               tbody
+                  tr(ng-repeat='nutrient in food.nutrients | filter:{is_default:true}')
+                     //- TODO: FIX FILTER
+                     td {{ nutrient.nutrdesc }} {{nutrient.is_default }}
+                     td {{ nutrient.nutr_quantity | number:1 }} {{ nutrient.units }}
+                     //- td(ng-switch='nutrient.dri')
+                     //-    span(ng-switch-default, ng-show='nutrient-dri >= 0')
+                     //-       {{ nutrient.percent_dri | number:2 }}
+                     //-       small %
+                     //-    span.text-muted(ng-switch-when='null') N/A

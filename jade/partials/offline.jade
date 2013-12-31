@@ -1,0 +1,73 @@
+.modal-content
+    .modal-header
+        button.close(type='button', ng-click='close()') &times;
+        h4.modal-title Use Healthily Offline
+    .modal-body.clearfix
+        div(ng-switch='step')
+            .media.slide(ng-switch-default, ng-animate="'slide'")
+                a.pull-left
+                    img.media-object(ng-src='{{ "something" | fatcow_icon }}', alt='')
+                .media-body
+                    h5.media-heading: b Check your browser
+                    p On supported web browsers, you can use Healthily even when you are not connected
+                        | to the internet. The first time you enable this feature, Healthily downloads the data
+                        | required to run the app offline. When you are disconnected, it automatically falls back to
+                        | offline mode. You can continue to use Healthily offline as usual, it will sync your logs 
+                        | and changes you made once you reconnect.
+                    p Please note that the following features are <strong>not available</strong> when you are offline:
+                        ul
+                            li Stream
+                            li Editing the list of people you are following
+                    p To enable offline support, we need to make sure that your browser is able to run the app
+                        | in offline mode by performing a set of tests.
+            .media.slide(ng-switch-when='checking', ng-animate="'slide'")
+                a.pull-left
+                    img.media-object(ng-src='{{ "something" | fatcow_icon }}', alt='')
+                .media-body
+                    h5.media-heading: b Checking for browser support
+                    p.text-info We are checking to see if your browser can run applications offline...
+            .media.slide(ng-switch-when='true', ng-animate="'slide'")
+                a.pull-left
+                    img.media-object(ng-src='{{ "something" | fatcow_icon }}', alt='')
+                .media-body
+                    h5.media-heading.text-success: b Your browser is able to run Healthily offline.
+                    p Click the button below to enable Healthily offline, the first time
+                        | you do this, we will download some files and store them in your browser,
+                        | so even when you are offline, you can visit this website just like you would do when you
+                        | are connected to the internet.
+            .media.slide(ng-switch-when='false', ng-animate="'slide'")
+                a.pull-left
+                    img.media-object(ng-src='{{ "something" | fatcow_icon }}', alt='')
+                .media-body
+                    h5.media-heading.text-danger: b Your browser cannot run Healthily offline
+                    p(ng-pluralize , count='offline.unsupported.length', when="{ \
+                        '1': 'The following feature is required to use Healthily offline but is not availabe in your browser:', \
+                        'other': 'The following features are required to use Healthily offline but are not availabe in your browser:' \
+                        }")
+                        ul 
+                            li(ng-repeat='feature in offline.unsupported')
+                                a(href='{{ offline.required[feature].ref }}'){{ offline.required[feature].name }}
+                    p Consider upgrading your browser to a more recent version, or using a browser that supports 
+                        span(ng-pluralize , count='offline.unsupported.length', when="{ \
+                        '1': '{{ offline.required[offline.unsupported[0]].name }}', \
+                        'other': 'those features' \
+                        }")
+                        | .
+            .media.slide(ng-switch-when='error', ng-animate="'slide'")
+                a.pull-left
+                    img.media-object(ng-src='{{ "error" | fatcow_icon }}', alt='')
+                .media-body
+                    h5.media-heading.text-warning: b We do not know if your browser is able to run Healthily offline.
+                    p Something went wrong while we are checking your browser's compatibility
+            .media.slide(ng-switch-when='get_browser', ng-animate="'slide'")
+                a.pull-left
+                    img.media-object(ng-src='{{ "globe" | fatcow_icon }}', alt='')
+                .media-body
+                    h5.media-heading: b Compatible browsers
+                    p This is a list of some browsers that have the required features to use Healthily offline:
+    .modal-footer
+        button.btn.btn-default(type='button', ng-click='close()') Close
+        span(ng-show='step != "checking" && step != "error" && step != "get_browser"', ng-switch='step')
+            button.btn.btn-primary(ng-switch-default, ng-click='check()', type='button') Check browser compatibility
+            button.btn.btn-primary(ng-switch-when='true', ng-click='enable()', type='button', ng-disabled='offline.supported != true') Enable offline support
+            button.btn.btn-primary(ng-switch-when='false', ng-click='getBrowser()', type='button', ng-disabled='offline.supported == true') Get a compatible browser

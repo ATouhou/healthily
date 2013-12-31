@@ -1,0 +1,15 @@
+doctype 5
+html(lang='en')
+  head
+    title Healthily
+    each style in styles
+      link(rel='stylesheet', href=style)
+    meta(name='viewport', content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no')
+  body(ng-app='healthily')
+    noscript.alert.alert-warning
+      | JavaScript is disabled in your browser settings. Most components of this application will not work unless JavaScript is enabled.
+    include navbar
+    include sidebar
+    block content
+  each script in scripts
+    script(src=script)

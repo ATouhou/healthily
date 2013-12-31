@@ -1,0 +1,22 @@
+form.panel.panel-default(composer, name='composer', ng-submit='submit()', ng-init='activity={type: "post"}')
+  .panel-body.no-padding
+    textarea.form-control(name="text", placeholder="What's on your mind?", ng-model="activity.text", required, auto-size)
+  control-set.panel-footer.clearfix
+    .btn-group.pull-left
+        button.btn.btn-default(tooltip='Attach a picture')
+          i.fa.fa-fw.fa-picture-o
+          //- i.icon.ion-image
+        button.btn.btn-default(tooltip='Insert a link')
+          i.fa.fa-fw.fa-link
+          //- i.icon.ion-link
+        button.btn.btn-default(tooltip='Add a feeling')
+          i.fa.fa-fw.fa-smile-o
+          //- i.icon.ion-person-add
+        button.btn.btn-default(tooltip='Set date')
+          i.fa.fa-fw.fa-calendar-o
+          //- i.icon.ion-clock
+        button.btn.btn-default(tooltip='Tag people')
+          i.fa.fa-fw.fa-users
+          //- i.icon.ion-person-add
+    .pull-right
+      button.btn.btn-primary(type='submit', ng-disabled='composer.$invalid') Post

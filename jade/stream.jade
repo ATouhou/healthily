@@ -1,0 +1,50 @@
+mixin feeling()
+  span.text-muted(ng-switch, on='!!activity.feeling')
+    span(ng-switch-when='true')
+      |  — feeling 
+      img(ng-src='icons/FatCow_Icons16x16/emotion_{{activity.feeling | feeling}}.png')
+      |  {{ activity.feeling }}
+.stream(ng-controller='streamController')
+  div.clearfix(ng-repeat='activity in newsfeed')
+    hr
+    activity.col-md-8.col-md-offset-2(activity-id='{{activity._id}}', ng-controller='activityController')
+      .media(user='activity._creator.username')
+        a.clearfix.pull-left(href='#')
+          img.profile-picture.img-circle.media-object(picture, ng-src='api/users/{{ activity._creator.username }}/image', alt='{{ activity._creator.name.first }}\'s profile picture')
+        .media-body
+          a.btn.btn-xs.text-muted.pull-right(type='button', ng-click='remove()') <i class='fa fa-fw fa-times'></i>
+          span.media-heading
+            a(name, href='#'): b {{ activity._creator.name.full }}
+          |  
+          span(ng-switch on='activity.type')
+            span(ng-switch-when='weight')
+              | weighed in
+            span(ng-switch-when='goal')
+              | set a new goal
+            span(ng-switch-when='badge')
+              | won a new badge
+            span(ng-switch-when='exercise')
+              | added a new exercise
+            span(ng-switch-when='workout')
+              | worked out
+            span(ng-switch-when='meal')
+              | had {{ activity.data.meal.name }}
+            span(ng-switch-when='food')
+              span added <strong>{{ activity.data.food.long_desc }}</strong> to his favorite foods
+          span(ng-switch, on='activity.type')
+            span(ng-switch-when='post')
+              include post_preview
+              mixin feeling
+            span(ng-switch-default)
+              mixin feeling
+              include post_preview
+          div
+            .pull-right.btn.btn-sm.btn-link: .text-muted(am-time-ago="activity.created")
+              //- .btn-group.btn-group-xs
+              //-   button.btn.btn-default.dropdown-toggle(type='button', data-toggle='dropdown') <i class="fa fa-cog"></i> <i class='caret'></i>
+              //-   ul.dropdown-menu(role='menu')
+              //-     li: a(href='#'): small I don't want to see this
+              //-     li: a(href='#'): small Flag as inappropriate
+            a.btn.btn-sm.btn-link(ng-click='like()') <i class='fa fa-fw fa-thumbs-up'></i> Like
+            a.btn.btn-sm.btn-link() <i class='fa fa-fw fa-comment'></i> Comment
+        #comments.media-footer

@@ -1,0 +1,44 @@
+div(ng-controller='profileController')
+   .list-group(ng-controller='statsController')
+      .list-group-item
+         .media(user)
+            a.clearfix.pull-left(href='#')
+               img.profile-picture.img-circle.media-object(picture, ng-src='api/users/{{ user.username }}/image', alt='{{ user.name.first }}\'s profile picture')
+            .media-body
+               span.media-heading
+                  a(name, href='#'): b {{ user.name.full }}
+               br
+               a.text-muted(href='#') See your profile <i class='fa fa-angle-double-right'></i>
+      .list-group-item
+         .media.clearfix
+            .pull-left
+               img.media-object(ng-src='{{ "calendar" | fatcow_icon:32 }}', alt='Streak icon')
+            .media-body
+               b.media-heading()
+                  {{ stats.streak[0].value }}-day streak
+               br
+               small.text-muted
+                  span(ng-switch, on='stats.streak[0].extended_today == true')
+                     span(ng-switch-when='true') Streak extended today
+                     span(ng-switch-when='false')
+                        ng(ng-switch , on='stats.streak[0].value > 0')
+                           span(ng-switch-when='true') Extend your streak 
+                              span(am-time-ago='dates.tomorrow')
+                           span(ng-switch-default) Start recording weight everyday to get motivated!
+                  //- TODO: replace with js object later
+      .list-group-item
+         .media.clearfix
+            .pull-left
+               img.media-object(ng-src='{{ "chart_down_color" | fatcow_icon:32 }}', alt='Streak icon')
+            .media-body
+               div: b 35 {{ stats.weight }}
+               small.text-muted kg lost
+      .list-group-item
+         .media.clearfix  
+            .pull-left
+               img.media-object(ng-src='{{ "medal_award_gold" | fatcow_icon:32 }}', alt='Badges icon')
+            .media-body
+               div: b {{ stats.badges.length }}
+               small.text-muted badges
+      .list-group-item
+         include progress
