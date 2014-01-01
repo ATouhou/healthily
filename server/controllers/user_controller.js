@@ -1,17 +1,17 @@
 module.exports = {
-	login: function() {
+    login: function(req, res, next) {
+        
+    },
+    logout: function(req, res, next) {
 
-	},
-	logout: function() {
+    },
+    createActivity: function(req, res, next) {
 
-	},
-	createActivity: function() {
+    },
+    modifyActivity: function(req, res, next) {
 
-	},
-	modifyActivity: function() {
+    },
+    deleteActivity: function(req, res, next) {
 
-	},
-	deleteActivity: function() {
-		
-	}
+    }
 }
