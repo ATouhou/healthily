@@ -2,9 +2,9 @@
 A node.js app that helps maintaining a healthy life.
 
 ## What can I use Healthily for?
-  * Log weight, food, exercise
+  * Log weight, food and exercise
   * Create custom foods and meals
-  * Add phased plans and set specific goals
+  * Create and share plans and goals
   * Motivate: users can:
     * follow each other
     * optionally share activities with followers
