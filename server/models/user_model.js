@@ -522,6 +522,21 @@ module.exports = function(db){
         return this.update({ $set: { streaks: streaks } }, callback);
     };
 
+    Schema.pre('save', function(next) {
+        if (this.isModified('password')) {
+            // TODO: Encrypt the password
+            bcrypt.genSalt.call(this, 10, function(err, salt) {
+                if (err) return next(err);
+                bcrypt.hash.call(this, this.password, salt, function(err, hash) {
+                    if (err) return next(err);
+                    this.password = hash;
+                    return next();
+                });
+            });
+
+        } else return next();
+    });
+
     Schema.post('save', function() {
         this.model.getNewBadges(function(err, newBadges) {
             if (!err && newBadges) {
