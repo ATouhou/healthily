@@ -18,6 +18,6 @@ var _schema = {
 };
 
 module.exports = function(db){
-    var Schema = new mongoose.Schema(_schema, {collection: 'plans'});
-    return db.model('Plan', Schema);
+    var Schema = new mongoose.Schema(_schema, {collection: 'recipes'});
+    return db.model('Recipe', Schema);
 }

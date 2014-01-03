@@ -7,7 +7,7 @@ var _ = require('underscore');
 
 'SELECT * FROM foodCats WHERE id < 25 ORDER BY id';
 'SELECT * from nutrientDefs JOIN dris ON nutrientDefs.nutr_no=dris.nutr_no';
-'SELECT * FROM foodDescs'
+'SELECT * FROM foodDescs';
 
 // "SELECT \
 //     foodDescs.long_desc, foodDescs.comname, foodDescs.sciname, \
