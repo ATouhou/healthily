@@ -1,138 +1,128 @@
-var _ = require('underscore');
-var async = require('async');
-var time = require('time');
-var cron = require('cron');
-var mongoose = require('mongoose');
-var validate = require('mongoose-validator').validate;
+module.exports = function(db){
 
-var _streaks = ['weight', 'food', 'exercise'];
+    var _ = require('underscore');
+    var async = require('async');
+    var time = require('time');
+    var cron = require('cron');
+    var mongoose = require('mongoose');
+    var validate = require('mongoose-validator').validate;
+    var bcrypt = require('bcrypt');
 
-var _schema = {
-    username: {
-        type: String,
-        required: true,
-        index: {unique: true}
-    },
-    password: String,
-    joined: { type: Date, default: Date.now },
-    active: { type: Boolean, default: true },
-    name: {
-        first: {type: String, required: true, validate: validate('isAlpha')},
-        last: {type: String, validate: validate({passIfEmpty: true}, 'isAlpha')}
-    },
-    email: {
-        type: String, required: true,
-        validate: validate('isEmail'),
-        index: {unique: true}
-    },
-    timezone: {
-        type: String,
-        required: true,
-        default: 'UTC',
-        ref: 'Timezone'
-    }, //TODO: add enum
-    picture: Buffer,
-    height: { type: Number, max: 270, min: 100, required: true },
-    born: { type: Date, required: true },
-    following: [
-        {
-            created: {type: Date, default: Date.now, required: true},
-            target: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
-        }
-    ],
-    foods: [{
-        _id: { type: String, ref: 'Food', required: true },
-        created: { type: Date, default: Date.now }
-    }],
-    exercises: [{
-        _id: { type: String, ref: 'Exercise', required: true },
-        created: {type: Date, default: Date.now}
-    }],
-    weights: [
-        {
+    var _streaks = ['weight', 'food', 'exercise'];
+
+    var _schema = {
+        username: {
+            type: String,
+            required: true,
+            index: { unique: true }
+        },
+        password: { type: String, select: false, required: true },
+        joined: { type: Date, default: Date.now, select: false },
+        active: { type: Boolean, default: true, select: false },
+        name: {
+            first: { type: String, required: true },
+            last: { type: String, validate: validate({ passIfEmpty: true }, 'isAlpha') }
+        },
+        email: {
+            type: String, required: true,
+            validate: validate('isEmail'),
+            index: { unique: true },
+            select: false
+        },
+        timezone: {
+            type: String,
+            required: true,
+            default: 'UTC',
+            ref: 'Timezone'
+        }, //TODO: add enum
+        picture: Buffer,
+        height: { type: Number, max: 270, min: 100, required: true, select: false },
+        born: { type: Date, required: true, select: false },
+        foods: [{
+            _id: { type: String, ref: 'Food', required: true, index: { unique: false } },
+            created: { type: Date, default: Date.now }
+        }],
+        exercises: [{
+            _id: { type: String, ref: 'Exercise', required: true, index: { unique: false } },
+            created: { type: Date, default: Date.now }
+        }],
+        weights: [{
             logged: { type: Date, default: Date.now },
             created: { type: Date, default: Date.now },
             value_kg: Number
-        }
-    ],
-    goals: [
-        {
-            _id: { type: String, ref: 'Goal' },
+        }],
+        goals: [{
+            _id: { type: String, ref: 'Goal', index: { unique: false } },
             started: { type: Date, default: Date.now },
             due: Date,
-            progress: [{logged: Date, value: Number}],
-            achieved: {type: Boolean, default: false}
-        }
-    ],
-    badges: [
-        {
-            _id: { type: String, ref: 'Badge' },
+            progress: [{ logged: Date, value: Number }],
+            achieved: { type: Boolean, default: false }
+        }],
+        badges: [{
+            _id: { type: String, ref: 'Badge', index: { unique: false } },
             created: { type: Date, default: Date.now }
-        }
-    ],
-    streaks: [{
-        _id: { type: String, enum: _streaks, required: true }, 
-        value: { type: Number, required: true, default: 0 }, 
-        updated: { type: Date, required: true, default: null }
-    }],
-    preferences: [
-        {
+        }],
+        streaks: [{
+            _id: { type: String, enum: _streaks, required: true, index: { unique: false } }, 
+            value: { type: Number, required: true, default: 0 }, 
+            updated: { type: Date, required: true, default: null }
+        }],
+        preferences: [{
             _id: {
                 type: String,
-                enum: ['lang', 'units'] // TODO: add more preferences
+                enum: ['lang', 'units'],
+                index: { unique: false } // TODO: add more preferences
             },
             value: mongoose.Schema.Types.Mixed
-        }
-    ],
-    visibility: [{
-        _id: {
-            type: String, 
-            enum: [
-            "followers", "following",
-            "badges", "goals", "plans",
-            "foods", "exercises",
-            "name.last", "email",
-            "born", "height"
-            ]
-        },
-        value: mongoose.Schema.Types.Mixed
-    }],
-    following: [{
-        _id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-        created: { type: Date, default: Date.now, required: true }
-    }],
-    blocked: [{
-        _id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-        created: { type: Date, default: Date.now, required: true }
-    }],
-    friendships: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Friendship'
-    }];
-    plans: [{
-        _id: {type: mongoose.Schema.Types.ObjectId, ref: 'Plan'},
-        added: Date,
-        active: Boolean
-    }],
-    lists: [{
-        _id: String,
-        members: [mongoose.Schema.Types.ObjectId]
-    }]
-};
+        }],
+        visibility: [{
+            _id: {
+                type: String, 
+                enum: [
+                "followers", "following",
+                "badges", "goals", "plans",
+                "foods", "exercises",
+                "name.last", "email",
+                "born", "height"
+                ],
+                index: { unique: false }
+            },
+            value: mongoose.Schema.Types.Mixed
+        }],
+        following: [{
+            _id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: { unique: false } },
+            created: { type: Date, default: Date.now, required: true }
+        }],
+        blocked: [{
+            _id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: { unique: false } },
+            created: { type: Date, default: Date.now, required: true }
+        }],
+        friendships: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Friendship'
+        }],
+        plans: [{
+            _id: { type: mongoose.Schema.Types.ObjectId, ref: 'Plan', index: { unique: false } },
+            added: Date,
+            active: Boolean
+        }],
+        lists: [{
+            _id: { type: String, index: { unique: false } },
+            members: [mongoose.Schema.Types.ObjectId]
+        }]
+    };
 
-module.exports = function(db){
-
-    var Activity = (require('activity_model'))(db),
-        Timezone = (require('timezone_model'))(db),
-        NewsFeedItem = (require('news_feed_item_model'))(db),
-        Notification = (require('notification_model'))(db),
-        Friendship = (require('friendship_model'))(db),
-        Badge = (require('badge_model'))(db),
-        Food = (require('food_model'))(db),
-        Exercise = (require('exercise_model'))(db),
-        Recipe = (require('recipe_model'))(db),
-        Goal = (require('goal_model'))(db),
-        Plan = (require('plan_model'))(db);
+    var Activity = require('./activity_model')(db),
+        Timezone = require('./timezone_model')(db),
+        NewsFeedItem = require('./news_feed_item_model')(db),
+        Notification = require('./notification_model')(db),
+        Friendship = require('./friendship_model')(db),
+        Badge = require('./badge_model')(db),
+        Food = require('./food_model')(db),
+        Exercise = require('./exercise_model')(db),
+        Recipe = require('./recipe_model')(db),
+        Goal = require('./goal_model')(db),
+        Plan = require('./plan_model')(db);
 
     var Schema = new mongoose.Schema(_schema, {collection: 'users'});
 
@@ -142,7 +132,7 @@ module.exports = function(db){
         if (typeof preference === 'undefined') {
             preference = 'first last';
         }
-        return preference.replace('first', this.name.first).replace('last', this.name.last);
+        return preference.replace('first', this.name.first).replace('last', this.name.last || '').trim();
     });
 
     // Add virtuals to JSON data, delete sensitive data... etc.
@@ -150,10 +140,13 @@ module.exports = function(db){
         getters: true, 
         virtuals: true, 
         transform: function(doc, ret, options) {
+            delete ret.id;
+            delete ret.__v;
             delete ret._id;
+            delete ret.joined;
             delete ret.password;
-            delete ret.name.first;
-            delete ret.name.last;
+            delete ret.active;
+            ret.name = ret.name.full;
             return ret;
         }
     });
@@ -161,15 +154,16 @@ module.exports = function(db){
     // Custom validators
     Schema.path('born').validate(function(value){
         return (!!value && ((new Date() - new Date(value)) / 31557600000) >= 18);
-    }, 'age_unsatisfied');
+    }, 'Age Unsatisfied');
 
-    Schema.path('streaks.updated').validate(function(value){
-        return (new Date(value) <= Date.now);
-    }, 'streak_extends_in_future');
+    // TODO: find some fix
+    // Schema.path('streaks.$.updated').validate(function(value){
+    //     return (new Date(value) <= Date.now);
+    // }, 'streak_extends_in_future');
 
     Schema.methods.owns = function(object){
-        if (typeof object == "undefined" || typeof object._id == "undefined") {
-            throw Error("object_not_found");
+        if (typeof object == 'undefined' || typeof object._id == 'undefined') {
+            throw Error('No Such Record');
         } else {
             return (object.hasOwnProperty('owner') && object.owner === this._id);
         }
@@ -184,10 +178,11 @@ module.exports = function(db){
         delete activity._id;
         delete activity.created;
         delete activity.updated;
-        activity = new (this.model('Activity'))(activity);
-        return activity.save.call(this, function(err) {
+        activity = new Activity(activity);
+        var user = this;
+        return activity.save(function(err) {
             if (!err && _(_streaks).contains(activity.type)) {
-                this.updateStreak(activity.type);
+                user.updateStreak(activity.type);
             }
             return callback(err);
         });
@@ -196,12 +191,12 @@ module.exports = function(db){
     Schema.methods.removeActivity = function(activity, callback){
         try {
             if (this.owns(activity)) {
-                return this.model('Activity').remove(activity, callback);
+                return Activity.remove(activity, callback);
             } else {
-                return callback(Error('permission_denied'), 0);
+                return callback(Error('Permission Denied'), 0);
             }
         } catch (e) {
-            return callback(Error('unknown_activity'), 0);
+            return callback(Error('No Such Activity'), 0);
         }
     };
 
@@ -209,12 +204,12 @@ module.exports = function(db){
         try {
             if (this.owns(activity)) {
                 activity.updated = Date.now();
-                return this.model('Activity').findByIdAndUpdate(activity._id, activity, callback);
+                return Activity.findByIdAndUpdate(activity._id, activity, callback);
             } else {
-                return callback(Error('permission_denied'), 0);
+                return callback(Error('Permission Denied'), 0);
             }
         } catch (e) {
-            return callback(Error('unknown_activity'), 0);
+            return callback(Error('No Such Activity'), 0);
         }
     };
 
@@ -225,7 +220,7 @@ module.exports = function(db){
             this.markModified('foods');
             return this.save(callback);
         } else {
-            return callback(Error('unrecognized_object_type'));
+            return callback(Error('No Such Record'));
         }
     };
 
@@ -236,32 +231,33 @@ module.exports = function(db){
             this.markModified('foods');
             return this.save(callback);
         } else {
-            return callback(Error('no_such_record'));
+            return callback(Error('No Such Record'));
         }
     };
 
     Schema.methods.createFood = function(food, callback) {
-        var food = new (this.model('Food'))(food);
         food.owner = this._id;
         delete food.created;
         delete food.updated;
+        var food = new Food(food);
+        food.save(callback);
     };
 
     Schema.methods.modifyFood = function(food, callback){
         try {
             if (this.owns(food)) {
                 food.updated = Date.now();
-                return this.model('Food').findByIdAndUpdate(food._id, food, callback);
+                return Food.findByIdAndUpdate(food._id, food, callback);
             } else {
-                return callback(Error('permission_denied'), 0);
+                return callback(Error('Permission Denied'), 0);
             }
         } catch (e) {
-            return callback(Error('unknown_record'), 0);
+            return callback(Error('No Such Record'), 0);
         }
     };
 
     Schema.methods.createPlan = function(plan, callback) {
-        var plan = new (this.model('Plan'))(plan);
+        var plan = new Plan(plan);
         plan.owner = this._id;
         delete plan.created;
         delete plan.updated;
@@ -281,17 +277,17 @@ module.exports = function(db){
         try {
             if (this.owns(plan)) {
                 plan.updated = Date.now();
-                return this.model('Plan').findByIdAndUpdate(plan._id, plan, callback);
+                return Plan.findByIdAndUpdate(plan._id, plan, callback);
             } else {
-                return callback(Error('permission_denied'), 0);
+                return callback(Error('Permission Denied'), 0);
             }
         } catch (e) {
-            return callback(Error('unknown_record'), 0);
+            return callback(Error('No Such Record'), 0);
         }
     };
 
     Schema.methods.removePlan = function(plan, callback) {
-        return this.model('Plan').findByIdAndRemove(plan._id, callback);
+        return Plan.findByIdAndRemove(plan._id, callback);
     };
 
     Schema.methods.addGoal = function(goal, callback) {
@@ -305,7 +301,7 @@ module.exports = function(db){
             this.markModified('goals');
             return this.save(callback);
         } else {
-            return callback(Error('no_such_record'));
+            return callback(Error('No Such Record'));
         }
     };
 
@@ -313,17 +309,22 @@ module.exports = function(db){
         try {
             if (this.owns(goal)) {
                 goal.updated = Date.now();
-                return this.model('Goal').findByIdAndUpdate(goal._id, goal, callback);
+                return Goal.findByIdAndUpdate(goal._id, goal, callback);
             } else {
-                return callback(Error('permission_denied'), 0);
+                return callback(Error('Permission Denied'), 0);
             }
         } catch (e) {
-            return callback(Error('unknown_record'), 0);
+            return callback(Error('No Such Record'), 0);
         }
     };
 
     Schema.methods.addFollowing = function(user, callback){
-        return this.update({ $addToSet: { following: { _id: user._id } } }, callback);
+        var t = this;
+        return Model.findOne(user, function(err, user) {
+            if (err) return callback(err);
+            if (!user) return callback(Error('No Such User'));
+            return t.update({ $addToSet: { following: { _id: user._id } } }, callback);
+        });
     };
 
     Schema.methods.removeFollowing = function(user, callback){
@@ -333,7 +334,7 @@ module.exports = function(db){
             this.markModified('following');
             return this.save(callback);
         } else {
-            return callback(Error('no_such_record'));
+            return callback(Error('No Such Record'));
         }
     };
 
@@ -348,7 +349,7 @@ module.exports = function(db){
             this.markModified('weights');
             return this.save(callback);           
         } else {
-            return callback(Error('no_such_record'));
+            return callback(Error('No Such Record'));
         }
     };
 
@@ -359,24 +360,24 @@ module.exports = function(db){
             this.markModified('weights');
             return this.save(callback);
         } else {
-            return callback(Error('no_such_record'));
+            return callback(Error('No Such Record'));
         }
     };
 
     Schema.methods.addFriend = function(friend, callback){
         var user = this;
         if (!this.hasOf('friends', friend)){
-            var friendship = new (this.model('Friendship'))();
+            var friendship = new Friendship();
             friendship.from = this._id;
             friendship.to = friend._id;
             return friendship.save(callback);
         } else {
-            return callback(Error('already_added'));
+            return callback(Error('Already Added'));
         }
     };
 
     Schema.methods.removeFriend = function(friend, callback){
-        return this.model('Friendship').findOneAndRemove({
+        return Friendship.findOneAndRemove({
             _id: {
                 $or: [{
                     from: this._id,
@@ -399,7 +400,7 @@ module.exports = function(db){
             this.markModified('blocked');
             return this.save(callback);
         } else {
-            return callback(Error('already_blocked'));
+            return callback(Error('Already Blocked'));
         }
     };
 
@@ -410,18 +411,18 @@ module.exports = function(db){
             this.markModified('blocked');
             return this.save(callback);
         } else {
-            return callback(Error('not_blocked'));
+            return callback(Error('Not Blocked'));
         }
     };
 
     Schema.methods.createNotification = function(notification, callback){
-        notification = new (this.model('Notification'))(notification);
+        notification = new Notification(notification);
         return notification.save(callback);
     }
 
     Schema.methods.getFriends = function(callback){
-        /* Get an array of ObjectId */
-        this.model('Friendship').find({
+        /* Get an array of _ids */
+        Friendship.find({
             _id: {
                 $or: [{
                     from: this._id,
@@ -439,38 +440,45 @@ module.exports = function(db){
     };
 
     Schema.methods.getFollowers = function(callback) {
-        /* Should return an array of _ids */
         // TODO: is $ valid?
-        this.find({
+        Model.find({
             'following._id': this._id
-        }).select('_id').sort('-following.$.created').exec(function(err, users) {
-            callback(err, _(users).pluck('_id'));
+        }).select('name').sort('-following.$.created').exec(function(err, users) {
+            callback(err, users);
         });
     };
 
     Schema.methods.canSeeActivity = function(activity, callback) {
-        return this.model('Activity').findOne.call(this, activity, function(err, activity) {
+        return Activity.findOne.call(this, activity, function(err, activity) {
             return activity.visibleTo(this, callback);
         });
     };
 
     Schema.methods.getNewBadges = function(callback) {
-        return this.model('Badges').checkFor(this, function(err, newBadges) {
-            if (!err && newBadges) {
-                // TODO: add to user model and save
-                async.each(newBadges, function(badge, callback) {
-                    this.update({ $addToSet: { badges: { _id: badge._id } } }, callback);
-                }, function(err) {
-                    callback(err, newBadges);
+        var user = this;
+        return Badge.checkFor(this, function(newBadges) {
+            if (newBadges) {
+
+                var date = Date.now();
+                newBadges.forEach(function(badge, index) {
+                    newBadges[index] = { 
+                        _id: badge._id,
+                        created: date
+                    };
                 });
-            } else return callback(err, null);
+
+                return user.update({ $addToSet: { badges: { $each: newBadges } } }, function(err) {
+                    if (!err) callback(newBadges);
+                    else callback(null);
+                });
+
+            } else return callback(null);
         });
     };
 
-    Schema.methods.getNewsFeed = function(options){
+    Schema.methods.getNewsFeed = function(options, callback){
         options.owner = this._id;
-        return this.model('NewsFeedItem')
-        .find(options)
+        return NewsFeedItem.find(options)
         .populate('activity')
         .populate('activity.owner', 'name') /* TODO: is this valid? */
         .sort('-happened').exec(function(err, newsfeed){
@@ -483,12 +491,23 @@ module.exports = function(db){
     };
 
     Schema.methods.getActivities = function(options, callback) {
+        if (!options) options = {};
         options.owner = this._id;
-        this.model('Activity').find(options).populate('owner', 'name').exec(callback);
+        return Activity.find(options)
+        .populate('owner', 'name')
+        .exec(callback);
     };
 
-    Schema.methods.getStreak = function(type, callback) {
-
+    Schema.methods.getStreak = function(type) {
+        var streak = _(this.streaks).findWhere({ _id: type });
+        if (typeof streak === 'undefined') {
+            streak = { 
+                _id: type,
+                value: 0,
+                last_extended: null
+            };
+        };
+        return streak;
     };
 
     Schema.methods.updateStreak = function(type, callback) {
@@ -497,7 +516,7 @@ module.exports = function(db){
         yesterday.setDate(today.getDate() - 1);
         yesterday.setHours(0, 0, 0, 0);
 
-        var streak = _(this.streaks).findWhere({ _id: type });
+        var streak = this.getStreak(type);
         if (typeof streak !== 'undefined') {
             if (streak.updated < today){
                 if (streak.updated >= yesterday) {
@@ -515,32 +534,39 @@ module.exports = function(db){
 
         streak.updated = Date.now();
 
-        var streaks = this.streaks;
-        var index = _(streaks).pluck('_id').indexOf(type);
-        streaks[index] = streak;
+        var streaks = _(this.streaks).reject(function(i) { i._id === type });
+        streaks.push(streak);
 
         return this.update({ $set: { streaks: streaks } }, callback);
     };
 
+    Schema.methods.validatePassword = function(password, callback) {
+        bcrypt.compare(password, this.password, function(err, valid) {
+            if (err) return callback(err);
+            return callback(null, valid);
+        });
+    };
+
     Schema.pre('save', function(next) {
+        var user = this;
         if (this.isModified('password')) {
-            // TODO: Encrypt the password
-            bcrypt.genSalt.call(this, 10, function(err, salt) {
+            bcrypt.genSalt(10, function(err, salt) {
                 if (err) return next(err);
-                bcrypt.hash.call(this, this.password, salt, function(err, hash) {
+                bcrypt.hash(user.password, salt, function(err, hash) {
                     if (err) return next(err);
-                    this.password = hash;
-                    return next();
+                    user.password = hash;
+                    next();
                 });
             });
 
-        } else return next();
+        } else next();
     });
 
-    Schema.post('save', function() {
-        this.model.getNewBadges(function(err, newBadges) {
-            if (!err && newBadges) {
-                this.createNotification({
+    Schema.pre('save', function(next) {
+        var user = this;
+        return this.getNewBadges(function(newBadges) {
+            if (newBadges.length > 0) {
+                user.createNotification({
                     type: 'badge',
                     data: {
                         people: [this._id],
@@ -549,13 +575,13 @@ module.exports = function(db){
                     }
                 });
             }
+            return next();
         });
-        this.model.updateSreak();
     });
 
     Schema.post('remove', function(user){
         /* Remove all activities by this user after account deletion */
-        this.model('Activity').remove({owner: user._id}, function(err){
+        Activity.remove({owner: user._id}, function(err){
             // if (err) throw err;
             // console.log('Removed activities of user', user._id);
         });
@@ -563,15 +589,17 @@ module.exports = function(db){
 
     var Model = db.model('User', Schema);
 
-    (function monitorStreaks() {
-        this.model('Timezone').find().exec(function(err, timezones) {
+    (function monitorStreaks(callback) {
+        Model.aggregate({ $group: { _id: '$timezone' } }).exec(function(err, timezones) {
+            if (err) return callback(err);
             async.each(timezones, function(timezone, callback) {
-                new (cron.CronJob)({
+                new cron.CronJob({
                     cronTime: '0 0 * * *',
                     start: true,
                     timeZone: timezone._id,
                     context: Model,
                     onTick: function() {
+                        console.log('tick for', timezone._id);
                         var today = new time.Date();
                         today.setTimezone(timezone._id);
                         var yesterday = new time.Date(today);
@@ -591,13 +619,15 @@ module.exports = function(db){
                         });
                     }
                 });
-
                 callback(null);
-            }, function(err) {
-                // Finished creating and starting cron jobs
-            });
+            }, callback);
         });
-    }).call(Model);
+    })(function(err) {
+        if (err) {
+            return console.log('Error monitoring streaks', err);
+        }
+        return console.log('Started monitoring streaks');
+    });
 
     return Model;
 };
