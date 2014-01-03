@@ -64,7 +64,7 @@ module.exports = function(db){
                 /* If one user is blocking the other, deny the request */
                 this.model('User').find({ _id: { $or: [this._id.from, this._id.to] } }, function(err, users) {
                     if (err || users.length != 2) next(Error('bad_user_models'));
-                    if (users[0].isBlocking(users[1]) || users[1].isBlocking[users[0]) {
+                    if (users[0].isBlocking(users[1]) || users[1].isBlocking(users[0])) {
                         return next(Error('request_blocked'));
                     } else {
                         next();

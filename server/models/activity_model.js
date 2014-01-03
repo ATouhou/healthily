@@ -1,5 +1,6 @@
 var _ = require('underscore');
 var mongoose = require('mongoose');
+var validate = require('mongoose-validator').validate;
 
 /* TODO: add validation rules */
 
@@ -20,9 +21,9 @@ var _schema = {
 
     type: {type: String, enum: _types, required: true},
     revisions: [{
-        text: {type: String, required: false,  validate: validate('len', 1, 2000)},
-        created: {type: Date, default: Date.now, required: true},
-        happened: Date,
+        text: { type: String, required: false,  validate: validate('len', 1, 2000) },
+        created: { type: Date, default: Date.now, required: true },
+        happened: Date
     }],
     feeling: String,
     data: mongoose.Schema.Types.Mixed,
@@ -36,8 +37,7 @@ var _schema = {
         revisions: [{
             text: {type: String, required: true,  validate: validate('len', 1, 200)},
             created: {type: Date, default: Date.now}
-        }],
-
+        }]
     }]
 };
 
@@ -49,20 +49,21 @@ module.exports = function(db){
         virtuals: true,
         transform: function(doc, ret, options){
             /* Get the latest revisions of the activity and all of its comments */
-            ret = _.extend(ret, ret.revisions[ret.revisions.length - 1]);
-            delete ret.revisions;
-            ret.comments.forEach(function(comment, index){
-                ret.comments[index] = _.extend(comment, comment.revisions[comment.revisions.length - 1]);
-                delete ret.comments[index].revisions;
-            });
+            ret.revisions = ret.revisions[0];
+            if (ret.comments){
+                ret.comments.forEach(function(comment, index){
+                    ret.comments[index] = _.extend(comment, _.last(comment.revisions));
+                    delete ret.comments[index].revisions;
+                });
+            }
             return ret;
         }
-    })
+    });
     
     Schema.methods.visibleTo = function(user, callback){
         this.model('User').findById.call(this, this.owner, function(err, owner){
             owner.getFriends.call(this, function(err, friends){
-                getAudiance.call(this, friends, owner.lists, function(err, audiance){
+                this.getAudiance.call(this, friends, owner.lists, function(err, audiance){
                     // TODO: consider when the user is blocked
                     return callback(err, audiance === 'public' || user._id === owner._id || audiance.indexOf(user._id) > -1);
                 });
@@ -70,8 +71,7 @@ module.exports = function(db){
         });
     };
 
-    var getAudiance = function(friends, lists, callback){
-        /* This methods should be called with the context of the current instance of Activity Model */
+    Schema.methods.getAudiance = function(friends, lists, callback){
 
         /* The visibility property can be in one of these formats:
             - String: 'private', 'public', 'friends', _id ref to a User, name of a User list of friends
@@ -120,12 +120,16 @@ module.exports = function(db){
         return callback(err, audiance);
     };
 
+    // Schema.post('save', function() {
+    //     // TODO: Create matching news feed item
+    // });
+
     Schema.virtual('popularity').get(function() {
         /* TODO: create a serious popularity algorithm that considers
          the number of unique owners of comments, the time between each comment,
          the number of likes and the time of time between each like,
          and the number of followers of the activity owner  */
-        return comments.length * likes.length;
+        return 0; this.comments.length * this.likes.length;
     });
 
     return db.model('Activity', Schema);

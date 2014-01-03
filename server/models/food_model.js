@@ -2,7 +2,7 @@ var mongoose = require('mongoose');
 
 var _schema = {
     owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
-    visibility: Mongoose.Schema.Types.Mixed,
+    visibility: mongoose.Schema.Types.Mixed,
     created: { type: Date, default: Date.now },
     updated: Date,    
 
@@ -55,8 +55,8 @@ var _schema = {
 };
 
 module.exports = function(db){
-    (require('category_model'))(db);
-    (require('nutrient_model'))(db);
+    (require('./category_model'))(db);
+    (require('./nutrient_model'))(db);
     var Schema = new mongoose.Schema(_schema, {collection: 'foods'});
     return db.model('Food', Schema);
 }

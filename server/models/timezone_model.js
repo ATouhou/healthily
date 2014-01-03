@@ -10,7 +10,7 @@ var _schema = {
 
 module.exports = function(db){
 	
-	(require('country_model'))(db);
+	(require('./country_model'))(db);
 
     var Schema = new mongoose.Schema(_schema, {collection: 'timezones'});
     return db.model('Timezone', Schema);
