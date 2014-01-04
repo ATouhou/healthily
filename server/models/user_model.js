@@ -64,7 +64,7 @@ module.exports = function(db){
         }],
         streaks: [{
             _id: { type: String, enum: _streaks, required: true, index: { unique: false } }, 
-            value: { type: Number, required: true, default: 0 }, 
+            value: { type: Number, required: true, default: 1 }, 
             updated: { type: Date, required: true, default: null }
         }],
         preferences: [{
@@ -182,7 +182,8 @@ module.exports = function(db){
         var user = this;
         return activity.save(function(err) {
             if (!err && _(_streaks).contains(activity.type)) {
-                user.updateStreak(activity.type);
+                console.log('going to update streak');
+                return user.updateStreak(activity.type, callback);
             }
             return callback(err);
         });
@@ -511,8 +512,15 @@ module.exports = function(db){
     };
 
     Schema.methods.updateStreak = function(type, callback) {
+
+        console.log(this);
+
         var today = new time.Date();
+        today.setTimezone(this.timezone);
+        today.setHours(0, 0, 0, 0);
+        
         var yesterday = new time.Date(today);
+        yesterday.setTimezone(this.timezone);
         yesterday.setDate(today.getDate() - 1);
         yesterday.setHours(0, 0, 0, 0);
 
@@ -533,11 +541,12 @@ module.exports = function(db){
         };
 
         streak.updated = Date.now();
+        
+        this.streaks = _(this.streaks).reject(function(i) { return i._id === type });
+        this.streaks.push(streak);
 
-        var streaks = _(this.streaks).reject(function(i) { i._id === type });
-        streaks.push(streak);
-
-        return this.update({ $set: { streaks: streaks } }, callback);
+        this.markModified('streaks');
+        return this.save(callback);
     };
 
     Schema.methods.validatePassword = function(password, callback) {
