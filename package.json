@@ -31,9 +31,13 @@
     "mongoose-validator": "~0.2.2",
     "mongoose": "~3.8.3",
     "bcrypt": "~0.7.7",
-    "connect-mongostore": "0.0.10",
     "time": "~0.10.0",
     "passport": "~0.1.17",
-    "passport-local": "~0.1.6"
+    "passport-local": "~0.1.6",
+    "mongo-relation": "~0.4.0",
+    "baucis": "~0.11.0",
+    "connect": "~2.12.0",
+    "connect-mongo": "~0.4.0",
+    "lingo": "0.0.5"
   }
 }
