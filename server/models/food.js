@@ -1,4 +1,5 @@
 var mongoose = require('mongoose');
+               require('mongo-relation');
 
 var _schema = {
     owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
@@ -8,9 +9,9 @@ var _schema = {
 
     _id: String,
     fdgrp_cd: { type: String, ref: 'Category', index: true },
-    long_desc: {type: String, index: true},
+    long_desc: { type: String, index: true },
     shrt_desc: String,
-    comname: {type: String, index: true},
+    comname: { type: String, index: true },
     manufacname: String,
     survey: Boolean,
     ref_desc: String,
@@ -55,8 +56,14 @@ var _schema = {
 };
 
 module.exports = function(db){
-    (require('./category_model'))(db);
-    (require('./nutrient_model'))(db);
+
+    require('./category')(db);
+    require('./nutrient')(db);
+
     var Schema = new mongoose.Schema(_schema, {collection: 'foods'});
+
+    Schema.belongsTo('Category', { through: 'fdgrp_cd' });
+
     return db.model('Food', Schema);
+
 }

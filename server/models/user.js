@@ -5,128 +5,29 @@ module.exports = function(db){
     var time = require('time');
     var cron = require('cron');
     var mongoose = require('mongoose');
-    var validate = require('mongoose-validator').validate;
+                   require('mongo-relation');
     var bcrypt = require('bcrypt');
 
     var _streaks = ['weight', 'food', 'exercise'];
 
-    var _schema = {
-        username: {
-            type: String,
-            required: true,
-            index: { unique: true }
-        },
-        password: { type: String, select: false, required: true },
-        joined: { type: Date, default: Date.now, select: false },
-        active: { type: Boolean, default: true, select: false },
-        name: {
-            first: { type: String, required: true },
-            last: { type: String, validate: validate({ passIfEmpty: true }, 'isAlpha') }
-        },
-        email: {
-            type: String, required: true,
-            validate: validate('isEmail'),
-            index: { unique: true },
-            select: false
-        },
-        timezone: {
-            type: String,
-            required: true,
-            default: 'UTC',
-            ref: 'Timezone'
-        }, //TODO: add enum
-        picture: Buffer,
-        height: { type: Number, max: 270, min: 100, required: true, select: false },
-        born: { type: Date, required: true, select: false },
-        foods: [{
-            _id: { type: String, ref: 'Food', required: true, index: { unique: false } },
-            created: { type: Date, default: Date.now }
-        }],
-        exercises: [{
-            _id: { type: String, ref: 'Exercise', required: true, index: { unique: false } },
-            created: { type: Date, default: Date.now }
-        }],
-        weights: [{
-            logged: { type: Date, default: Date.now },
-            created: { type: Date, default: Date.now },
-            value_kg: Number
-        }],
-        goals: [{
-            _id: { type: String, ref: 'Goal', index: { unique: false } },
-            started: { type: Date, default: Date.now },
-            due: Date,
-            progress: [{ logged: Date, value: Number }],
-            achieved: { type: Boolean, default: false }
-        }],
-        badges: [{
-            _id: { type: String, ref: 'Badge', index: { unique: false } },
-            created: { type: Date, default: Date.now }
-        }],
-        streaks: [{
-            _id: { type: String, enum: _streaks, required: true, index: { unique: false } }, 
-            value: { type: Number, required: true, default: 1 }, 
-            updated: { type: Date, required: true, default: null }
-        }],
-        preferences: [{
-            _id: {
-                type: String,
-                enum: ['lang', 'units'],
-                index: { unique: false } // TODO: add more preferences
-            },
-            value: mongoose.Schema.Types.Mixed
-        }],
-        visibility: [{
-            _id: {
-                type: String, 
-                enum: [
-                "followers", "following",
-                "badges", "goals", "plans",
-                "foods", "exercises",
-                "name.last", "email",
-                "born", "height"
-                ],
-                index: { unique: false }
-            },
-            value: mongoose.Schema.Types.Mixed
-        }],
-        following: [{
-            _id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: { unique: false } },
-            created: { type: Date, default: Date.now, required: true }
-        }],
-        blocked: [{
-            _id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: { unique: false } },
-            created: { type: Date, default: Date.now, required: true }
-        }],
-        friendships: [{
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'Friendship'
-        }],
-        plans: [{
-            _id: { type: mongoose.Schema.Types.ObjectId, ref: 'Plan', index: { unique: false } },
-            added: Date,
-            active: Boolean
-        }],
-        lists: [{
-            _id: { type: String, index: { unique: false } },
-            members: [mongoose.Schema.Types.ObjectId]
-        }]
-    };
+    var _schema = require('./../schemas/user');
 
-    var Activity = require('./activity_model')(db),
-        Timezone = require('./timezone_model')(db),
-        NewsFeedItem = require('./news_feed_item_model')(db),
-        Notification = require('./notification_model')(db),
-        Friendship = require('./friendship_model')(db),
-        Badge = require('./badge_model')(db),
-        Food = require('./food_model')(db),
-        Exercise = require('./exercise_model')(db),
-        Recipe = require('./recipe_model')(db),
-        Goal = require('./goal_model')(db),
-        Plan = require('./plan_model')(db);
+    var Session = require('./session')(db),
+        Activity = require('./activity')(db),
+        Timezone = require('./timezone')(db),
+        NewsFeedItem = require('./news_feed_item')(db),
+        Notification = require('./notification')(db),
+        Friendship = require('./friendship')(db),
+        Badge = require('./badge')(db),
+        // Food = require('./food_model')(db),
+        Exercise = require('./exercise')(db),
+        Recipe = require('./recipe')(db),
+        Goal = require('./goal')(db),
+        Plan = require('./plan')(db);
 
     var Schema = new mongoose.Schema(_schema, {collection: 'users'});
 
-    Schema.virtual('name.full').get(function(){
+    Schema.virtual('name.full').get(function() {
         // TODO: format this according to user preference/language
         var preference = _(this.preferences).findWhere({ _id: 'name' });
         if (typeof preference === 'undefined') {
@@ -140,13 +41,7 @@ module.exports = function(db){
         getters: true, 
         virtuals: true, 
         transform: function(doc, ret, options) {
-            delete ret.id;
-            delete ret.__v;
-            delete ret._id;
-            delete ret.joined;
-            delete ret.password;
-            delete ret.active;
-            ret.name = ret.name.full;
+            try { ret.name = ret.name.full; } catch (e) {}
             return ret;
         }
     });
@@ -421,24 +316,86 @@ module.exports = function(db){
         return notification.save(callback);
     }
 
-    Schema.methods.getFriends = function(callback){
-        /* Get an array of _ids */
+    Schema.methods.getFriends = function(callback) {
+        /* Get an array of ObjectId.toString() */
+        var _id = this._id;
+        console.log('this id', _id);
+
         Friendship.find({
-            _id: {
-                $or: [{
-                    from: this._id,
-                    accepted: true,
-                }, {
-                    to: this._id,
-                    accepted: true
-                }]
-            }
-        }, '_id.to', function(err, friendships){
-            if (err) {
-                return callback(null, _.chain(friendships).pluck('_id').pluck('to'));
+            $or: [{
+                accepted: true,
+                from: _id
+            }, {
+                accepted: true,
+                to: _id
+            }]
+        }, 'from to', function(err, friendships){
+            if (!err) {
+
+                var from = _(friendships).pluck('from').value();
+                var to   = _(friendships).pluck('to').value();
+
+                console.log('from', from, 'to', to);
+
+                friendships = [].concat(from, to);
+
+                friendships = _(friendships).reject(function(i) { return i== _id });
+
+                // friendships = _(friendships).map(function(i) { return i.toString() });
+
+                return callback(null, friendships);
             } else return callback(err, null);
         });
     };
+
+    Schema.methods.hasFriend = function(user, includeSelf, callback) {
+        var _id = this._id;
+        if (!user) return callback(null, false);
+        if (includeSelf && _id.toString() === user._id.toString()) return callback(null, true);
+        Friendship.findOne({
+            $or: [{
+                accepted: true,
+                from: _id,
+                to: user._id
+            }, {
+                accepted: true,
+                from: user._id,
+                to: _id
+            }]
+        }).select('_id').exec(function(err, friendship) {
+            if (err) return callback(err, null);
+            if (friendship) return callback(null, true);
+            return callback(null, false);
+        })
+    };
+
+    Schema.methods.hasFOAF = function(user, includeSelf, includeFriends, callback) {
+        var that = this;
+        this.hasFriend(user, includeSelf, function(err, result) {
+            if (err) return callback(err, null);
+            if (result && trueIfFriend) { return callback(err, true);
+            } else {
+                that.getFriends(function(err, friends) {
+                    if (err) return callback(err, null);
+                    Friendship.findOne({ $or: [{
+                        accepted: true,
+                        from: user._id,
+                        to: { $in: friends }
+                    }, {
+                        accepted: true,
+                        from: { $in: friends },
+                        to: user._id
+                    }]}).exec(function(err, friendships) {
+                        if (err) return callback(err, null);
+                        if (friendships.length > 0) return callback(null, true);
+                        return callback(null, false);
+                    });
+                });
+            }
+            return callback(null, false);
+        });
+    };
+
 
     Schema.methods.getFollowers = function(callback) {
         // TODO: is $ valid?
@@ -478,26 +435,17 @@ module.exports = function(db){
     };
 
     Schema.methods.getNewsFeed = function(options, callback){
-        options.owner = this._id;
-        return NewsFeedItem.find(options)
-        .populate('activity')
-        .populate('activity.owner', 'name') /* TODO: is this valid? */
-        .sort('-happened').exec(function(err, newsfeed){
-            if (!err) {
-                /* We do not need the owner as we already know it,
-                   TODO: but we need to fill the activity with the name of creator */
-                return callback(null, _(newsfeed).pluck('activity'));
-            } else return callback(err, null);
-        });
+        return Activity.find({
+            $or: {
+                visibleTo: this._id,
+                owner: this._id
+            }
+        })
+        .populate('owner', 'name')
+        .sort('-happened').exec(callback);
     };
 
-    Schema.methods.getActivities = function(options, callback) {
-        if (!options) options = {};
-        options.owner = this._id;
-        return Activity.find(options)
-        .populate('owner', 'name')
-        .exec(callback);
-    };
+    Schema.hasMany('Activity', { dependent: 'delete' });
 
     Schema.methods.getStreak = function(type) {
         var streak = _(this.streaks).findWhere({ _id: type });
@@ -518,7 +466,7 @@ module.exports = function(db){
         var today = new time.Date();
         today.setTimezone(this.timezone);
         today.setHours(0, 0, 0, 0);
-        
+
         var yesterday = new time.Date(today);
         yesterday.setTimezone(this.timezone);
         yesterday.setDate(today.getDate() - 1);
@@ -554,6 +502,63 @@ module.exports = function(db){
             if (err) return callback(err);
             return callback(null, valid);
         });
+    };
+
+    Schema.methods.getAudianceOf = function(visibility, callback) {
+        /* Return an array of ObjectId */
+        var that = this;
+
+        // this.getFriends(function(err, friends) {
+
+            if (err) return callback(err, null);
+
+            var lists = that.lists,
+            // friends = friends,
+            audiance = [],
+            err = null;
+
+            if (visibility instanceof Array) {
+                visibility.forEach(function(item) {
+                    that.getAudianceOf(item, function(subErr, subAudiance) {
+                        if (subErr) err = subErr;
+                        else audiance.concat(subAudiance);
+                    });
+                });
+            } else if ('string' === typeof visibility) {
+                switch (visibility) {
+                    case 'public':
+                        audiance = 'public';
+                        break;
+                    case 'private':
+                        audiace = null;
+                        break;
+                    case 'friends':
+                        audiance = friends;
+                        break;
+                    case 'friends_of_friends':
+                        that.getFOAFs(true, function(err, foafs) {
+                            if (err) return callback(err, null);
+                            audiance = foafs;
+                        });
+                        break;
+                    default:
+                        var list = _(lists).findWhere( { _id: visibility } );
+                        if ('undefined' !== typeof list) {
+                            audiance = list.members;
+                        } else {
+                            audiance = visibility;
+                        }
+                        break;
+                    }
+            } else if (visibility.hasOwnProperty('_id')) {
+                audiance = [visibility._id];
+            } else {
+                err = Error('Bad Audiance');
+            }
+
+            // callback(err, audiance.length ? audiance : null);
+
+        // });
     };
 
     Schema.pre('save', function(next) {
@@ -592,8 +597,12 @@ module.exports = function(db){
         /* Remove all activities by this user after account deletion */
         Activity.remove({owner: user._id}, function(err){
             // if (err) throw err;
-            // console.log('Removed activities of user', user._id);
+            console.log('Removed activities of user', user.username);
         });
+
+        // NewsFeedItem.remove({ owner: user._id; });
+        // Food.remove({ owner: user._id }); ??
+        // Plan.remove ??
     });
 
     var Model = db.model('User', Schema);

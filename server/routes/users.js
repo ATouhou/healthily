@@ -128,7 +128,7 @@ module.exports = function(app, db) {
                 text: req.param('text', '')
             }]
         };
-        req.user.createActivity(activity, function(err, activity) {
+        req.user.createActivity(activity, function(err) {
             if (!err) {
                 return res.json(201, activity);
             } else {
@@ -138,7 +138,7 @@ module.exports = function(app, db) {
     });
 
     router.get('/:this/activities', function(req, res, next) {
-        req.user.getActivities({  }, function(err, activities) {
+        req.user.activities.find({  }, function(err, activities) {
             if (!err) {
                 return res.json(200, activities);
             } else {
@@ -148,7 +148,11 @@ module.exports = function(app, db) {
     });
 
     router.get('/:this/activities/:activityId', function(req, res, next) {
-        //
+        var activity = {
+            owner: req.user._id,
+            _id: req.param('activityId')
+        };
+
     });
 
     router.get('/:this/foods/:foodId', function(req, res, next) {
