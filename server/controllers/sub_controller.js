@@ -6,21 +6,15 @@ module.exports = function(singular, config) {
     
     var db = config.db;
 
-    var controller = baucis.rest({
-        singular: singular,
-        basePath: '/:username/' + en.pluralize(singular),
-        relations: true
-    });
-
     var requireVisibility = function(req, res, next) {
 
         var globalSetting = _(req.urlUser.visibility).findWhere({ type: singular.toLowerCase() });
-            globalSetting = 'undefined' === typeof globalSetting ? 'friends' : globalSetting.value;
+            globalSetting = 'undefined' === typeof globalSetting ? 'public' : globalSetting.value;
 
         var visibility = req.object && req.object.hasOwnProperty('visibility') ? req.object.visibility : globalSetting;
 
-        // console.log('Visibility:', visibility);
-        // console.log('Global setting:', visibility);
+        if (visibility !== "public")
+            if (!req.user) return next(Error('Not Authenticated'));
 
         switch (visibility) {
             case 'public':
@@ -34,9 +28,7 @@ module.exports = function(singular, config) {
                 });
                 break;
             case 'friends':
-                // console.log('I am in Friends');
                 req.urlUser.hasFriend(req.user, true, function(err, result) {
-                    // console.log('Are friends?', result ? 'yes' : 'no');
                     if (err) return next(err);
                     if (result) return next();
                     else return next(Error('Forbidden'));
@@ -66,14 +58,18 @@ module.exports = function(singular, config) {
         return next(Error('Forbidden'));
     };
 
-    controller = _(controller).extend({
+    var controller = _(baucis.rest({
+        singular: singular,
+        basePath: '/:username/' + en.pluralize(singular),
+        relations: true
+    })).extend({
         requireVisibility: requireVisibility,
         requireOwnership: requireOwnership,
         queryOwnership: function(req, res, next) {
             req.baucis.query.where('owner', req.urlUser._id);
             next();
         },
-        modificationOwnership: function(req, res, next) {
+        ensureOwnership: function(req, res, next) {
             req.body.owner = req.user._id;
             next();
         }
@@ -102,7 +98,7 @@ module.exports = function(singular, config) {
     });
 
     controller.request('post del', function(req, res, next) {
-        controller.modificationOwnership(req, res, next);
+        controller.ensureOwnership(req, res, next);
     });
 
     controller.request('post del put', function(req, res, next) {

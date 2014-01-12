@@ -21,6 +21,13 @@ module.exports = function(db) {
         select: '-password -joined'
     });
 
+    var requireOwnership = function(req, res, next) {
+        if (!req.user) return res.send(401);
+        if (req.user.id !== req.urlUser.id) return res.send(403);
+        if (req.user.id === req.urlUser.id) return next();
+        return next(Error());
+    };
+
     passport.use(new LocalStrategy(
         function(username, password, done) {
             model.findOne({ username: username }, '+password', function (err, user) {
@@ -45,8 +52,10 @@ module.exports = function(db) {
     user.use(passport.initialize());
     user.use(passport.session());
 
-    // user.request('instance', 'del post put');
-    // user.request('collection', 'del put');
+    user.request('instance', 'del post put', requireOwnership);
+    user.request('collection', 'del put', function(req, res, next) {
+        res.send(405);
+    });
 
     user.post('/:username/sessions', [
         function(req, res, next){
@@ -72,7 +81,8 @@ module.exports = function(db) {
         .where({
             $or: [
                 { owner: req.urlUser._id, visibleTo: req.user._id },
-                { owner: req.user._id }
+                { owner: req.user._id },
+                { visibility: 'public' }
             ]
             
         })
@@ -82,27 +92,26 @@ module.exports = function(db) {
 
     var friendship = (require('./sub_controller'))('Friendship', { db: db });
 
-    // friendship.param('username', function(req, res, next, value) {
-    //     // console.log(req);
-    //     // TODO: Respect user's privacy settings for friendships
-    //     model.findOne({ username: value }, function(err, user) {
-    //         if (err) return next(err);
-    //         if (!user) return next(Error('Source Not Found'));
-    //         req.url_user = user;
-    //         next();
-    //     });
-    // });
+    friendship.queryOwnership = function(req, res, next) {
+        req.baucis.query
+        .where({
+            $or: [{ from: req.urlUser._id }, { to: req.urlUser._id }]
+        }).populate('from to', 'name username');
 
-    // friendship.request('get', requireVisibility('friendship'));
+        /* Hide pending/rejected requests for anyone other than the owner */
+        if (!req.user || req.user.id !== req.urlUser.id) {
+            req.baucis.query.where('accepted', true);
+        }
+        next();
+    };
 
-    // friendship.request('post del put', requireRole('owner'));
+    friendship.ensureOwnership = function(req, res, next) {
+        delete req.body.accepted;
+        req.body.from = req.user._id;
+        next();
+    };
 
     friendship.request('post', function(req, res, next) {
-        
-        delete req.body.accepted;
-
-        req.body.from = req.user._id;
-
         model.findOne( { username: req.body.to }, function(err, user) {
             if (err) return next(err);
             if (!user) {
@@ -112,57 +121,7 @@ module.exports = function(db) {
             req.body.to = user._id;
             next();
         });
-
     });
-
-    friendship.queryOwnership = function(req, res, next) {
-        req.baucis.query
-        .where({
-            $or: [{ from: req.urlUser._id }, { to: req.urlUser._id }]
-        }).populate('from to', 'name username');
-
-        /* Hide pending requests */
-        if (req.user.id !== req.urlUser.id) {
-            req.baucis.query.where('accepted', true);
-        }
-
-        next();
-    };
-
-    // friendship.documents(function(req, res, next) {
-    //     /* We have to do this because population of _id.from and _id.to
-    //      returns null (a mongoose bug?) */
-    //     var tmp = {  };
-
-    //     async.map(req.baucis.documents, function(document, callback) {
-            
-    //         var from = document._id.from;
-    //         var to = document._id.to;
-
-    //         if (tmp.hasOwnProperty(from)) {
-    //             document._id.from = tmp[from];
-    //         } else {
-    //             model.findById(from, 'username name', function(err, user) {
-    //                 document._id.from = user;
-    //                 tmp[from] = user;
-    //                 callback(err, document);
-    //             });
-    //         }
-
-    //         // if (tmp.hasOwnProperty(to)) {
-    //         //     document._id.to = tmp[to];
-    //         // } else {
-    //         //     model.findById(to, function(err, user) {
-    //         //         document._id.to = user;
-    //         //         tmp[to] = user;
-    //         //     });
-    //         // }
-            
-    //     }, function(err, documents) {
-    //         req.baucis.documents = documents;
-    //         res.json(documents);
-    //     });        
-    // });
 
     user.use(activity);
     user.use(friendship);

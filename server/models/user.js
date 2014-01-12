@@ -1,3 +1,7 @@
+/**
+@module User Model
+@requires mongoose, User Schema
+*/
 module.exports = function(db){
 
     var _ = require('underscore');
@@ -316,24 +320,23 @@ module.exports = function(db){
         return notification.save(callback);
     }
 
-    Schema.methods.getFriends = function(callback) {
+    Schema.methods.getFriends = function(includeSelf, callback) {
         /* Get an array of ObjectId.toString() */
         var _id = this._id;
         console.log('this id', _id);
 
         Friendship.find({
+            accepted: true,
             $or: [{
-                accepted: true,
                 from: _id
             }, {
-                accepted: true,
                 to: _id
             }]
         }, 'from to', function(err, friendships){
             if (!err) {
 
-                var from = _(friendships).pluck('from').value();
-                var to   = _(friendships).pluck('to').value();
+                var from = _(friendships).pluck('from');
+                var to   = _(friendships).pluck('to');
 
                 console.log('from', from, 'to', to);
 
@@ -348,17 +351,81 @@ module.exports = function(db){
         });
     };
 
+    Schema.methods.getFOAFs = function(includeSelf, includeFriends, callback) {
+        var that = this;
+        this.getFriends(false, function(err, friends) {
+
+            if (err) return callback(err, null);
+
+            Friendship.find({
+                accepted: true,
+                $or: [{
+                    from: { $in: friends },
+                    to: { $nin: friends }
+                }, {
+                    from: { $nin: friends },
+                    to: { $in: friends }
+                }]
+            }).exec(function(err, result) {
+
+                if (err) return callback(err, null);
+
+                var from = _(result).pluck('from');
+                    to =   _(result).pluck('to');
+
+                result = [].concat(from, to);
+
+                console.log(result);
+
+                if (includeFriends) {
+                    result = result.concat(friends);
+                } else {
+                    result = _(result).filter(function(item) {
+                        return !_.chain(friends).map(function(i) {
+                            return i.toString();
+                        }).contains(item.toString()).value();
+                    });
+                }
+
+                if (includeSelf) {
+                    result.push(that._id);
+                } else {
+                    result = _(result).filter(function(item) {
+                        return item.toString() !== that.id;
+                    });
+                }
+
+                var deduplicated = [];
+
+                /**
+                Remove duplicate entries
+                */
+                result.forEach(function(item) {
+
+                    var exists = _.chain(deduplicated).map(function(i) {
+                        return i.toString();
+                    }).contains(item.toString()).value() === true;
+
+                    if (!exists) deduplicated.push(item);
+
+                });
+
+                return callback(null, deduplicated);
+            });
+
+        });
+    };
+
     Schema.methods.hasFriend = function(user, includeSelf, callback) {
         var _id = this._id;
         if (!user) return callback(null, false);
         if (includeSelf && _id.toString() === user._id.toString()) return callback(null, true);
         Friendship.findOne({
+            accepted: true,
             $or: [{
-                accepted: true,
                 from: _id,
                 to: user._id
             }, {
-                accepted: true,
                 from: user._id,
                 to: _id
             }]
@@ -370,33 +437,40 @@ module.exports = function(db){
     };
 
     Schema.methods.hasFOAF = function(user, includeSelf, includeFriends, callback) {
+        
         var that = this;
-        this.hasFriend(user, includeSelf, function(err, result) {
+
+        if (includeSelf && this._id.toString() === user._id.toString()) return callback(null, true);
+
+        this.hasFriend(user, false, function(err, result) {
             if (err) return callback(err, null);
-            if (result && trueIfFriend) { return callback(err, true);
+            if (result && includeFriends) { return callback(err, true);
             } else {
-                that.getFriends(function(err, friends) {
+                that.getFriends(false, function(err, friends) {
                     if (err) return callback(err, null);
-                    Friendship.findOne({ $or: [{
+                    Friendship.findOne({
                         accepted: true,
-                        from: user._id,
-                        to: { $in: friends }
-                    }, {
-                        accepted: true,
-                        from: { $in: friends },
-                        to: user._id
-                    }]}).exec(function(err, friendships) {
+                        $or: [{
+                            from: user._id,
+                            to: { $in: friends }
+                        }, {                        
+                            from: { $in: friends },
+                            to: user._id
+                        }]
+                    }).exec(function(err, friendship) {
                         if (err) return callback(err, null);
-                        if (friendships.length > 0) return callback(null, true);
+                        if (friendship) return callback(null, true);
                         return callback(null, false);
                     });
                 });
             }
-            return callback(null, false);
         });
     };
 
-
+    /**
+    @method Find all followers
+    @return {Array} instances of ObjectId
+    */
     Schema.methods.getFollowers = function(callback) {
         // TODO: is $ valid?
         Model.find({
@@ -533,10 +607,13 @@ module.exports = function(db){
                         audiace = null;
                         break;
                     case 'friends':
-                        audiance = friends;
+                        // audiance = friends;
+                        that.getFriends(true, function(err, friends) {
+                            // TODO: 
+                        });
                         break;
                     case 'friends_of_friends':
-                        that.getFOAFs(true, function(err, foafs) {
+                        that.getFOAFs(true, true, function(err, foafs) {
                             if (err) return callback(err, null);
                             audiance = foafs;
                         });
