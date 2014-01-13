@@ -54,7 +54,7 @@ module.exports = function(singular, config) {
     var requireOwnership = function(req, res, next) {
         if (!req.object && req.urlUser.id === req.user.id) return next();
         if (!!req.object && req.object.owner.toString() === req.urlUser.id &&
-            req.object.owner.toString() === req.user.id) return next();
+            req.urlUser.id === req.user.id) return next();
         return next(Error('Forbidden'));
     };
 
