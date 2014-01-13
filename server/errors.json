@@ -1,0 +1,20 @@
+{
+    "Forbidden": {
+        "description": "The currently authenticated user can not access this resource"
+    },
+    "Bad Audiance": {
+        "description": "Visibility settings of the resource are invalid"
+    },
+    "Not Authenticated": {
+
+    },
+    "Target Not Found": {
+
+    },
+    "Source Not Found": {
+
+    },
+    "Bad Visibility": {
+
+    }
+}
