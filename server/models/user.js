@@ -81,7 +81,6 @@ module.exports = function(db){
         var user = this;
         return activity.save(function(err) {
             if (!err && _(_streaks).contains(activity.type)) {
-                console.log('going to update streak');
                 return user.updateStreak(activity.type, callback);
             }
             return callback(err);
@@ -323,7 +322,6 @@ module.exports = function(db){
     Schema.methods.getFriends = function(includeSelf, callback) {
         /* Get an array of ObjectId.toString() */
         var _id = this._id;
-        console.log('this id', _id);
 
         Friendship.find({
             accepted: true,
@@ -334,24 +332,19 @@ module.exports = function(db){
             }]
         }, 'from to', function(err, friendships){
             if (!err) {
-
                 var from = _(friendships).pluck('from');
                 var to   = _(friendships).pluck('to');
 
-                console.log('from', from, 'to', to);
-
                 friendships = [].concat(from, to);
 
-                friendships = _(friendships).reject(function(i) { return i== _id });
+                friendships = _(friendships).reject(function(i) { return i.toString() == _id.toString() });
 
-                // friendships = _(friendships).map(function(i) { return i.toString() });
-
-                return callback(null, friendships);
+                return callback(null, deduplicate(friendships));
             } else return callback(err, null);
         });
     };
 
-    Schema.methods.getFOAFs = function(includeSelf, includeFriends, callback) {
+    Schema.methods.getFoFs = function(includeSelf, includeFriends, callback) {
         var that = this;
         this.getFriends(false, function(err, friends) {
 
@@ -375,13 +368,11 @@ module.exports = function(db){
 
                 result = [].concat(from, to);
 
-                console.log(result);
-
                 if (includeFriends) {
                     result = result.concat(friends);
                 } else {
-                    result = _(result).filter(function(item) {
-                        return !_.chain(friends).map(function(i) {
+                    result = _(result).reject(function(item) {
+                        return _.chain(friends).map(function(i) {
                             return i.toString();
                         }).contains(item.toString()).value();
                     });
@@ -390,30 +381,36 @@ module.exports = function(db){
                 if (includeSelf) {
                     result.push(that._id);
                 } else {
-                    result = _(result).filter(function(item) {
-                        return item.toString() !== that.id;
+                    result = _(result).reject(function(item) {
+                        return item.toString() === that.id;
                     });
                 }
 
-                var deduplicated = [];
-
-                /**
-                Remove duplicate entries
-                */
-                result.forEach(function(item) {
-
-                    var exists = _.chain(deduplicated).map(function(i) {
-                        return i.toString();
-                    }).contains(item.toString()).value() === true;
-
-                    if (!exists) deduplicated.push(item);
-
-                });
-
-                return callback(null, deduplicated);
+                return callback(null, deduplicate(result));
             });
 
         });
+    };
+
+
+    /**
+    Remove duplicate entries
+    */
+    var deduplicate = function(array) {
+        var deduplicated = [];
+        array.forEach(function(item) {
+            var exists = 
+            _.chain(deduplicated)
+             .map(function(i) {
+                return i.toString();
+             })
+             .contains(item.toString())
+             .value();
+
+            if (!exists) deduplicated.push(item);
+        });
+
+        return deduplicated;
     };
 
     Schema.methods.hasFriend = function(user, includeSelf, callback) {
@@ -436,7 +433,7 @@ module.exports = function(db){
         })
     };
 
-    Schema.methods.hasFOAF = function(user, includeSelf, includeFriends, callback) {
+    Schema.methods.hasFoF = function(user, includeSelf, includeFriends, callback) {
         
         var that = this;
 
@@ -535,8 +532,6 @@ module.exports = function(db){
 
     Schema.methods.updateStreak = function(type, callback) {
 
-        console.log(this);
-
         var today = new time.Date();
         today.setTimezone(this.timezone);
         today.setHours(0, 0, 0, 0);
@@ -578,64 +573,51 @@ module.exports = function(db){
         });
     };
 
+    /**
+    @method getAudianceOf
+    @return {Array} ObjectId
+    */
     Schema.methods.getAudianceOf = function(visibility, callback) {
         /* Return an array of ObjectId */
         var that = this;
 
-        // this.getFriends(function(err, friends) {
-
-            if (err) return callback(err, null);
-
-            var lists = that.lists,
-            // friends = friends,
-            audiance = [],
-            err = null;
-
-            if (visibility instanceof Array) {
-                visibility.forEach(function(item) {
-                    that.getAudianceOf(item, function(subErr, subAudiance) {
-                        if (subErr) err = subErr;
-                        else audiance.concat(subAudiance);
+        if (visibility instanceof Array) {
+            async.concat(visibility, that.getAudianceOf, function(err, results) {
+                if (err) return callback(err, null);
+                return callback(null, deduplicate(results.push(that._id)));
+            });
+        } else if ('string' === typeof visibility) {
+            switch (visibility) {
+                case 'public':
+                    return callback(null, 'public');
+                    break;
+                case 'private':
+                    return callback(null, [that._id]);
+                    break;
+                case 'friends':
+                    that.getFriends(true, function(err, friends) {
+                        if (err) return callback(err, null);
+                        return callback(null, friends);
                     });
-                });
-            } else if ('string' === typeof visibility) {
-                switch (visibility) {
-                    case 'public':
-                        audiance = 'public';
-                        break;
-                    case 'private':
-                        audiace = null;
-                        break;
-                    case 'friends':
-                        // audiance = friends;
-                        that.getFriends(true, function(err, friends) {
-                            // TODO: 
-                        });
-                        break;
-                    case 'friends_of_friends':
-                        that.getFOAFs(true, true, function(err, foafs) {
-                            if (err) return callback(err, null);
-                            audiance = foafs;
-                        });
-                        break;
-                    default:
-                        var list = _(lists).findWhere( { _id: visibility } );
-                        if ('undefined' !== typeof list) {
-                            audiance = list.members;
-                        } else {
-                            audiance = visibility;
-                        }
-                        break;
+                    break;
+                case 'fof':
+                    that.getFoFs(true, true, function(err, fofs) {
+                        if (err) return callback(err, null);
+                        return callback(null, fofs);
+                    });
+                    break;
+                default:
+                    var list = _(that.lists).findWhere({ _id: visibility });
+                    if ('undefined' !== typeof list) {
+                        return callback(null, list.members.push(that._id));
+                    } else {
+                        return callback(Error('Bad Audiance'), null);
                     }
-            } else if (visibility.hasOwnProperty('_id')) {
-                audiance = [visibility._id];
-            } else {
-                err = Error('Bad Audiance');
+                    break;
             }
-
-            // callback(err, audiance.length ? audiance : null);
-
-        // });
+        } else {
+            return callback(Error('Bad Audiance'), null);
+        }
     };
 
     Schema.pre('save', function(next) {
@@ -694,7 +676,7 @@ module.exports = function(db){
                     timeZone: timezone._id,
                     context: Model,
                     onTick: function() {
-                        console.log('tick for', timezone._id);
+                        console.log('Tick for', timezone._id);
                         var today = new time.Date();
                         today.setTimezone(timezone._id);
                         var yesterday = new time.Date(today);

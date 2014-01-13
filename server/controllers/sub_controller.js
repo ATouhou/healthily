@@ -9,7 +9,7 @@ module.exports = function(singular, config) {
     var requireVisibility = function(req, res, next) {
 
         var globalSetting = _(req.urlUser.visibility).findWhere({ type: singular.toLowerCase() });
-            globalSetting = 'undefined' === typeof globalSetting ? 'public' : globalSetting.value;
+            globalSetting = 'undefined' === typeof globalSetting ? 'friends' : globalSetting.value;
 
         var visibility = req.object && req.object.hasOwnProperty('visibility') ? req.object.visibility : globalSetting;
 
@@ -20,8 +20,8 @@ module.exports = function(singular, config) {
             case 'public':
                 return next();
                 break;
-            case 'friends_of_friends':
-                req.urlUser.hasFOAF(req.user, true, true, function(err, result) {
+            case 'fof':
+                req.urlUser.hasFoF(req.user, true, true, function(err, result) {
                     if (err) return next(err);
                     if (result) return next();
                     else return next(Error('Forbidden'));
@@ -42,7 +42,7 @@ module.exports = function(singular, config) {
                     if (err) return next(err);
                     if (_.chain(result)
                         .map(function(i) { return i.toString() })
-                        .contains(req.user.id)) {
+                        .contains(req.user.id).value()) {
                         return next();
                     }
                     return next(Error('Forbidden'));
