@@ -1,18 +1,23 @@
 {
     "Forbidden": {
+        "code": 403,
         "description": "The currently authenticated user can not access this resource"
     },
     "Bad Audiance": {
+        "code": 405,
         "description": "Visibility settings of the resource are invalid"
     },
     "Not Authenticated": {
-
+        "code": 401,
+        "description": "Trying to access a protected resource without authentication"
     },
     "Target Not Found": {
-
+        "code": 404,
+        "description": "The target resource of the source-target relationship does not exist"
     },
     "Source Not Found": {
-
+        "code": 404,
+        "description": "The source resource of the source-target relationship does not exist"
     },
     "Bad Visibility": {
 

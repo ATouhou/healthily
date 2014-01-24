@@ -21,6 +21,7 @@ app.use(express.cookieParser(config.cookies.secret));
 
 app.use(express.session({
     secret: config.sessions.secret,
+    maxAge: new Date(Date.now() + 3600000),
     store: new MongoStore({
       db: healthily.connection.db
     })

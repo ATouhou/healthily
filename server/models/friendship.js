@@ -9,26 +9,28 @@ module.exports = function(db){
 
     Schema.pre('save', function(next){
 
+        var that = this;
+
         if (this.from.toString() === this.to.toString()) {
-            next(Error('Conflict'));
+            return next(Error('Bad Friendship'));
         }
 
-        // /* If there's already a friendship, deny this one */
-        // this.findById({ from: this.to, to: this.from }).count(function(err, count) {
-        //     if (count >= 1) {
-        //         next(Error('Conflict'));
-        //     } else {
-        //         /* If one user is blocking the other, deny the request */
-        //         this.model('User').find({ _id: { $or: [this._id.from, this._id.to] } }, function(err, users) {
-        //             if (err || users.length != 2) next(Error('bad_user_models'));
-        //             if (users[0].isBlocking(users[1]) || users[1].isBlocking(users[0])) {
-        //                 return next(Error('request_blocked'));
-        //             } else {
-        //                 next();
-        //             }
-        //         });
-        //     }
-        // });
+        this.model('Friendship').find({ $or: [{ from: this.from, to: this.to }, { from: this.to, from: this.from }] }).count(function(err, count) {
+            if (err) return next(err);
+            if (count > 0) return next(Error('Conflict'));
+            that.model('User').findById(that.from, function(err, user) {
+                if (err) return next(err);
+                user.isBlocking({ _id: that.to }, function(err, result) {
+                    if (err) return next(err);
+                    if (result) return next(Error('Bad Friendship'));
+                    user.isBlockedBy({ _id: that.from }, function(err, result) {
+                        if (err) return next(err);
+                        if (result) return next(Error('Bad Friendship'));
+                        next();
+                    });
+                });
+            })
+        });
 
         next();
 

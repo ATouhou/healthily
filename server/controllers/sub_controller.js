@@ -7,14 +7,13 @@ module.exports = function(singular, config) {
     var db = config.db;
 
     var requireVisibility = function(req, res, next) {
-
-        var globalSetting = _(req.urlUser.visibility).findWhere({ type: singular.toLowerCase() });
+        var globalSetting = _(req.urlUser.visibility).findWhere({ section: singular.toLowerCase() });
             globalSetting = 'undefined' === typeof globalSetting ? 'friends' : globalSetting.value;
 
-        var visibility = req.object && req.object.hasOwnProperty('visibility') ? req.object.visibility : globalSetting;
+        var visibility = !!req.resource && req.resource.hasOwnProperty('visibility') ? req.resource.visibility : globalSetting;
 
         if (visibility !== "public")
-            if (!req.user) return next(Error('Not Authenticated'));
+            if (!req.isAuthenticated()) return next(Error('Not Authenticated'));
 
         switch (visibility) {
             case 'public':
@@ -48,12 +47,13 @@ module.exports = function(singular, config) {
                     return next(Error('Forbidden'));
                 });
                 break;
-        }
+        }        
     };
 
     var requireOwnership = function(req, res, next) {
-        if (!req.object && req.urlUser.id === req.user.id) return next();
-        if (!!req.object && req.object.owner.toString() === req.urlUser.id &&
+        if (!req.isAuthenticated()) return next(Error('Not Authenticated'));
+        if (!req.resource && req.urlUser.id === req.user.id) return next();
+        if (!!req.resource && req.resource.owner.toString() === req.urlUser.id &&
             req.urlUser.id === req.user.id) return next();
         return next(Error('Forbidden'));
     };
@@ -65,7 +65,7 @@ module.exports = function(singular, config) {
     })).extend({
         requireVisibility: requireVisibility,
         requireOwnership: requireOwnership,
-        queryOwnership: function(req, res, next) {
+        queryUrlUserOwnership: function(req, res, next) {
             req.baucis.query.where('owner', req.urlUser._id);
             next();
         },
@@ -78,32 +78,31 @@ module.exports = function(singular, config) {
     controller.param('username', function(req, res, next, value) {
         req.urlUser = false;
         db.model('User').findOne({ username: value }, function(err, user) {
-            if (!err) req.urlUser = user;
+            if (err) return next(err);
+            if (!user) return next(Error('No Such User'));
+            req.urlUser = user;
             next();
         });
     });
 
     controller.param('id', function(req, res, next, value) {
-        req.object = false;
+        req.resource = false;
         db.model(singular).findById(value).populate('owner').exec(function(err, obj) {
-            if (!err) {
-                req.object = obj;
-            }
+            if (err) return next(err);
+            req.resource = obj;
             next();
         });
     });
 
     controller.query(function(req, res, next) {
-        controller.queryOwnership(req, res, next);
+        controller.queryUrlUserOwnership(req, res, next);
     });
 
-    controller.request('post del', function(req, res, next) {
-        controller.ensureOwnership(req, res, next);
-    });
-
-    controller.request('post del put', function(req, res, next) {
+    controller.request('post del put', [function(req, res, next) {
         controller.requireOwnership(req, res, next);
-    });
+    }, function(req, res, next) {
+        controller.ensureOwnership(req, res, next);
+    }]);
 
     controller.request('get head', function(req, res, next) {
         controller.requireVisibility(req, res, next);

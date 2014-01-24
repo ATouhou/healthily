@@ -22,8 +22,9 @@ module.exports = {
     revisions: [{
         text: { type: String, required: false,  validate: validate('len', 1, 2000) },
         created: { type: Date, default: Date.now, required: true, index: true },
-        happened: Date
     }],
+
+    happened: { type: Date, default: Date.now },
 
     feeling: String,
 

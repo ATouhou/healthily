@@ -35,21 +35,18 @@ module.exports = function(db){
         }
     });
     
-    // Schema.methods.visibleTo = function(user, callback){
-    //     this.model('User').findById.call(this, this.owner, function(err, owner){
-    //         owner.getFriends.call(this, function(err, friends){
-    //             this.getAudiance.call(this, friends, owner.lists, function(err, audiance){
-    //                 // TODO: consider when the user is blocked
-    //                 return callback(err, audiance === 'public' || user._id === owner._id || audiance.indexOf(user._id) > -1);
-    //             });
-    //         });
-    //     });
-    // };
     Schema.pre('save', function(next) {
+
         var that = this;
-        this.getAudiance.call(this, this.visibility, function(err, audiance) {
-            that.visibleTo = audiance;
-            return next();
+
+        this.model('User').findById(this.owner, function(err, owner) {
+            if (err) return next(err);
+            owner.getAudianceOf(that.visibility, function(err, audiance) {
+                if (err) return next(err);
+                that.visibleTo = audiance;
+                that.markModified('visibleTo');
+                return next();
+            });
         });
 
         //TODO: update streak from here?

@@ -277,26 +277,55 @@ module.exports = function(db){
 
     Schema.methods.removeFriend = function(friend, callback){
         return Friendship.findOneAndRemove({
-            _id: {
-                $or: [{
-                    from: this._id,
-                    to: friend._id
-                }, {
-                    from: friend._id,
-                    to: this._id
-                }]
-            }
+            $or: [{
+                from: this._id,
+                to: friend._id
+            }, {
+                from: friend._id,
+                to: this._id
+            }]
         }, callback);
     };
 
-    Schema.methods.isBlocking = function(friend){
-        return _.pluck(this.blocked, '_id').indexOf(friend._id) > -1;
+    Schema.methods.acceptFriend = function(friend, callback) {
+        Friendship.findOneAndModify({
+            from: friend._id,
+            to: this._id,
+            accepted: { $ne: true }
+        }, {
+            accepted: true
+        }, callback);
+    };
+
+    Schema.methods.rejectFriend = function(friend, callback) {
+        Friendship.findOneAndModify({
+            from: friend._id,
+            to: this._id,
+            accepted: { $ne: false }
+        }, {
+            accepted: false
+        }, callback);
+    };
+
+    Schema.methods.isBlocking = function(user, callback) {
+        //TODO: async style for consistency
+        //TODO: compare object
+        callback(null, _.map(this.blocking, function(i) { return i.toString() }).indexOf(user.id || user._id.toString()) > -1);
     }
+
+    Schema.methods.isBlockedBy = function(user, callback) {
+        var that = this;
+        this.model('User').findOne(user, function(err, user) {
+            if (err) return callback(err, null);
+            if (!user) return callback(Error('Target Not Found'), null);
+            user.isBlocking(that, callback);
+        });
+    };
 
     Schema.methods.blockFriend = function(friend){
         if (!this.isBlocking(friend)) {
-            this.blocked.push({ _id: friend._id });
-            this.markModified('blocked');
+            this.blocking.push({ _id: friend._id });
+            this.markModified('blocking');
             return this.save(callback);
         } else {
             return callback(Error('Already Blocked'));
@@ -305,9 +334,9 @@ module.exports = function(db){
 
     Schema.methods.unblockFriend = function(friend){
         if (this.isBlocking(friend)){
-            var index = _(this.blocked).pluck('_id').indexOf(friend._id);
-            this.blocked.splice(index, 1);
-            this.markModified('blocked');
+            var index = _(this.blocking).map(function(i) { return i.toString() }).indexOf(friend._id.toString());
+            this.blocking.splice(index, 1);
+            this.markModified('blocking');
             return this.save(callback);
         } else {
             return callback(Error('Not Blocked'));
@@ -462,6 +491,15 @@ module.exports = function(db){
                 });
             }
         });
+    };
+
+    Schema.methods.is = function(role) {
+        //TODO: implement Promises
+
+    };
+
+    Schema.methods.to = Schema.methods.with = function(user) {
+        //TODO: Promise
     };
 
     /**
@@ -654,14 +692,12 @@ module.exports = function(db){
 
     Schema.post('remove', function(user){
         /* Remove all activities by this user after account deletion */
-        Activity.remove({owner: user._id}, function(err){
-            // if (err) throw err;
-            console.log('Removed activities of user', user.username);
+        [Activity, Goal, Plan, Friendship, Notification, Recipe].forEach(function(model) {
+            model.remove({ owner: user._id }, function(err) {
+                if (err) return console.log('Error removing user\'s properties');
+                console.log('Removed user\'s stuff');
+            });
         });
-
-        // NewsFeedItem.remove({ owner: user._id; });
-        // Food.remove({ owner: user._id }); ??
-        // Plan.remove ??
     });
 
     var Model = db.model('User', Schema);

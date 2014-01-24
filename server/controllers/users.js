@@ -22,7 +22,7 @@ module.exports = function(db) {
     });
 
     var requireOwnership = function(req, res, next) {
-        if (!req.user) return res.send(401);
+        if (!req.isAuthenticated()) return res.send(401);
         if (req.user.id !== req.urlUser.id) return res.send(403);
         if (req.user.id === req.urlUser.id) return next();
         return next(Error());
@@ -64,51 +64,111 @@ module.exports = function(db) {
         },
         passport.authenticate('local'),
         function(req, res, next) {
-            if (!req.user) return next(err);
+            if (!req.isAuthenticated()) return next(err);
             res.redirect('/users/' + req.user.username);
         }
     ]);
 
     user.del('/:username/sessions', function(req, res, next) {
         req.logout();
+        delete req.user;
         res.send(204);
     });
 
     var activity = (require('./sub_controller'))('Activity', { db: db });
 
-    activity.queryOwnership = function(req, res, next) {
-        req.baucis.query
-        .where({
-            $or: [
-                { owner: req.urlUser._id, visibleTo: req.user._id },
-                { owner: req.user._id },
-                { visibility: 'public' }
-            ]
-            
-        })
-        .populate('owner', 'name');
-        next();
+    activity.queryUrlUserOwnership = function(req, res, next) {
+        req.baucis.query.populate('owner', 'name');
+        var query = {
+            owner: req.urlUser._id
+        };
+        if (!req.isAuthenticated()) {
+            query.visibility = 'public';
+            req.baucis.query.where(query);
+            next();
+        } else if (req.urlUser.id !== req.user.id) {
+            query.$or = [{ visibility: 'public' }];
+            req.urlUser.hasFriend(req.user, false, function(err, friends) {
+                if (err) return next(err);
+                if (friends) {
+                    query.$or.push({ visibility: { $in: ['friends', 'fof'] } });
+                    req.baucis.query.where(query);
+                    next();
+                } else {
+                    req.urlUser.hasFoF(req.user, false, false, function(err, fof) {
+                        if (err) return next(err);
+                        if (fof) query.$or.push({visibility: 'fof'});
+                        req.baucis.query.where(query);
+                        next();
+                    });
+                }
+            });
+        } else {
+            next();
+        }
     };
+
+    var rv = activity.requireVisibility;
+
+    activity.requireVisibility = function(req, res, next) {
+        /**
+        This will enable users who are not signed in to view public activity
+        Visibility settings for individual activities within the result are still respected
+        */
+        req.urlUser.visibility = [{
+            section: 'activity',
+            value: 'public'
+        }];
+
+        rv(req, res, next);
+    };
+
+    activity.request('post', function(req, res, next) {
+        req.body.revisions = [{text: req.body.text}];
+        next();
+    });
 
     var friendship = (require('./sub_controller'))('Friendship', { db: db });
 
-    friendship.queryOwnership = function(req, res, next) {
+    friendship.queryUrlUserOwnership = function(req, res, next) {
         req.baucis.query
         .where({
             $or: [{ from: req.urlUser._id }, { to: req.urlUser._id }]
         }).populate('from to', 'name username');
 
         /* Hide pending/rejected requests for anyone other than the owner */
-        if (!req.user || req.user.id !== req.urlUser.id) {
+        if (!req.isAuthenticated() || req.user.id !== req.urlUser.id) {
             req.baucis.query.where('accepted', true);
         }
         next();
     };
 
     friendship.ensureOwnership = function(req, res, next) {
-        delete req.body.accepted;
-        req.body.from = req.user._id;
+        if (req.route.method === 'put') {
+            /* Only the user who **received** the request can update it,
+               and only accepted field to update is 'accepted' */
+            delete req.body.to;
+            req.body.to = req.user._id;
+        } else {
+            /* If POST, we need to ensure the request doesn't send 'accepted'
+               If DELETE, only the person who sent the request can remove it */
+            delete req.body.accepted;
+            req.body.from = req.user._id;
+        }
         next();
+    };
+
+    friendship.requireOwnership = function(req, res, next) {
+        /* Overriding the default method for requireOwnership, the only change made here
+           is the use of 'to/from' instead of 'owner' */
+        console.log('Request', req);
+        if (!req.isAuthenticated()) return next(Error('Not Authenticated'));
+        if (!req.resource && req.urlUser.id === req.user.id) return next();
+        if (!!req.resource 
+            && (req.resource.to.toString() === req.urlUser.id || req.resource.from.toString() === req.urlUser.id)
+            && req.urlUser.id === req.user.id) return next();
+        return next(Error('Forbidden'));
+        // TODO
     };
 
     friendship.request('post', function(req, res, next) {
