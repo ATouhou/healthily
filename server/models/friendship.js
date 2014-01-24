@@ -15,7 +15,7 @@ module.exports = function(db){
             return next(Error('Bad Friendship'));
         }
 
-        this.model('Friendship').find({ $or: [{ from: this.from, to: this.to }, { from: this.to, from: this.from }] }).count(function(err, count) {
+        this.model('Friendship').count({ $or: [{ from: this.from, to: this.to }, { from: this.to, from: this.from }] }).exec(function(err, count) {
             if (err) return next(err);
             if (count > 0) return next(Error('Conflict'));
             that.model('User').findById(that.from, function(err, user) {
@@ -31,9 +31,6 @@ module.exports = function(db){
                 });
             })
         });
-
-        next();
-
     });
 
     return db.model('Friendship', Schema);
