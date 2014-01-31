@@ -75,7 +75,13 @@ module.exports = function(db) {
         res.send(204);
     });
 
-    var activity = (require('./sub_controller'))('Activity', { db: db });
+    var activity = (require('./sub_controller'))('Activity', {
+        db: db,
+        baucis: {
+            relations: true,
+            basePath: '/:username/activities' 
+        }
+    });
 
     activity.queryUrlUserOwnership = function(req, res, next) {
         req.baucis.query.populate('owner', 'name');
@@ -112,8 +118,8 @@ module.exports = function(db) {
 
     activity.requireVisibility = function(req, res, next) {
         /**
-        This will enable users who are not signed in to view public activity
-        Visibility settings for individual activities within the result are still respected
+        This will enable users who are not signed in to view public activity.
+        Visibility settings for individual activities within the result are still respected.
         */
         req.urlUser.visibility = [{
             section: 'activity',
@@ -128,7 +134,13 @@ module.exports = function(db) {
         next();
     });
 
-    var friendship = (require('./sub_controller'))('Friendship', { db: db });
+    var friendship = (require('./sub_controller'))('Friendship',  {
+        db: db,
+        baucis: {
+            relations: true,
+            basePath: '/:username/friendships' 
+        }
+    });
 
     friendship.queryUrlUserOwnership = function(req, res, next) {
         req.baucis.query

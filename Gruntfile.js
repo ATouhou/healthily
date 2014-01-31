@@ -1,4 +1,4 @@
-module.exports = function(grunt){
+module.exports = function(grunt) {
     grunt.initConfig({
         pkg: grunt.file.readJSON('package.json'),
         files: {
@@ -377,9 +377,28 @@ module.exports = function(grunt){
                     tasks: 'default'
                 }
             }
+        },
+        nutridb: {
+            sql: {
+                dump: 'tmp/nutridb-database-sr25.sql',
+                db: 'nutridb-database-sr25',
+                username: 'root',
+                password: ''
+            },
+            mongo: {
+                schemas: {
+                    food: require('./server/schemas/food'),
+                    category: require('./server/schemas/category'),
+                    nutrient: require('./server/schemas/nutrient'),
+                }
+            },
+            download: {
+                url: 'http://nutridb.org/nutridb-database-sr25.sql.gz',
+                tmp: 'tmp/'
+            } 
         }
     });
-    
+
     grunt.loadNpmTasks('grunt-contrib-concat');
     grunt.loadNpmTasks('grunt-contrib-copy');
     grunt.loadNpmTasks('grunt-contrib-clean');
@@ -390,6 +409,9 @@ module.exports = function(grunt){
     grunt.loadNpmTasks('grunt-imagine');
     grunt.loadNpmTasks('grunt-express-server');
     grunt.loadNpmTasks('grunt-contrib-watch');
+
+    grunt.loadTasks('./tasks');
+
 
     grunt.registerTask('static', [
         'clean:tmp', 'clean:static',
