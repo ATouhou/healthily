@@ -554,7 +554,7 @@ module.exports = function(db){
         .sort('-happened').exec(callback);
     };
 
-    Schema.hasMany('Activity', { dependent: 'delete' });
+    // Schema.hasMany('Activity', { dependent: 'delete' });
 
     Schema.methods.getStreak = function(type) {
         var streak = _(this.streaks).findWhere({ _id: type });
