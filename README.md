@@ -1,9 +1,9 @@
 # Healthily
-A node.js app that helps maintaining a healthy life.
+A service that helps maintaining a healthy life.
 
 ## What can I use Healthily for?
   * Log weight, food and exercise
-  * Create custom foods and meals
+  * Create and share custom recipes
   * Create and share plans and goals
   * Motivate: users can:
     * follow each other
@@ -21,25 +21,41 @@ A node.js app that helps maintaining a healthy life.
   * Follow people to get their activities in your stream.
 
 ## Components
-Healthily is a node/express/mongoose app that uses the following components:
-
 ### Backend
-  * **Node.js**
-  * **Express Framework**
-  * **Mongoose**: a Node.js wrapper for MongoDB
-  * **NutriDB**: For food descriptions and nutrients information, we use a MongoDB version of [nutridb.org database](http://nutridb.org/download) converted first to SQLite3 using [mysql2sqlite.sh](https://gist.github.com/943776) then to MongoDB using an included node script (`nutridb_import.js`), we will also provide the `mongodump` of the database soon. The script makes use of the document-oriented nature of MongoDB as opposed to the relational SQL model, so nutrients information are included as sub-documents inside food document instead of having separate collections (however we still store nutrient definitions (descriptions, tagnames, DRIs) in a separate collection).
+The backend is a *Node/Express* application with a **RESTful API** that is composed of the following components:
+
+  * **Mongoose**: a Node wrapper for MongoDB
+  * **Baucis**: creates RESTful APIs using Mongoose models
+  * **NutriDB**: For foods and nutrients details, we use a MongoDB version of [NutriDB](http://nutridb.org/download) converted using an included Grunt task  (`grunt nutridb`), we will also provide the `mongodump` of the database soon to make it easier to build the project. The task will conform to the document-oriented nature of MongoDB as opposed to the relational SQL model, so nutrients information are included as sub-documents within each food document instead of having separate collections for foods and nutrients. However we still store nutrient definitions (descriptions, tag names, DRIs) in a separate collection to eliminate redundancy.
 
 ### Frontend
-  * **Angular JS**: A JavaScript frontend framework
-  * **Bootstrap 3**
-  * **Underscore.js**
-  * [TODO]...
+The current frontend is intended for use on a desktop web browser and is built using *Bootstrap 3* and *AngularJS*. It will support offline using IndexedDB and AppCache.
+
+More frontends are planned:
+
+  * a Firefox OS webapp
+  * a native app for Android
 
 ## Getting started
-  1. First, make sure you have node.js and npm (node package manager) installed
-  2. Clone this repository using git
-  3. `cd` to the local clone and execute `npm install`, this will install all the node modules required by Healthily
-  4. `npm start` will start the server at port 3000.
+### Building
+  1. First, make sure you have [Node and NPM](http://nodejs.org) installed
+  2. Clone this repository: `git clone https://github.com/forabi/healthily.git`
+  3. `cd` to the local clone and execute `npm install`, this will install all the node modules required by the project
+  4. `grunt build:prod` will build the project for production environments. Check out the other Grunt tasks included in `Gruntfile.js` and `/tasks` folder.
+
+### Contributing
+
+  #### Reporting bugs
+
+  [TODO]
+
+  #### Translating
+
+  [TODO]
+
+  #### Documenting
+
+  [TODO]
 
 ##License
 GPLv2
