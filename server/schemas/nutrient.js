@@ -7,7 +7,7 @@ module.exports = {
     usda_active: Boolean,
     num_dec: Number,
     dris: [{
-        age: {begin: Number, end: Number},
+        age: { begin: Number, end: Number },
         gender: {type: String, enum: ['male', 'female', 'avg']},
         value: Number,
         ul: Number,

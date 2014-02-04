@@ -707,9 +707,9 @@ module.exports = function(db){
             if (err) return callback(err);
             async.each(timezones, function(timezone, callback) {
                 new cron.CronJob({
-                    cronTime: '0 0 * * *',
+                    cronTime: '0 0 * * *', /* Everyday at 12:00 am */
+                    timeZone: timezone._id, /* User's timezone */
                     start: true,
-                    timeZone: timezone._id,
                     context: Model,
                     onTick: function() {
                         console.log('Tick for', timezone._id);

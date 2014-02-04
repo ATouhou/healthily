@@ -58,11 +58,10 @@ module.exports = function(singular, config) {
         return next(Error('Forbidden'));
     };
 
-    var controller = _(baucis.rest({
-        singular: singular,
-        basePath: '/:username/' + en.pluralize(singular),
-        relations: true
-    })).extend({
+    var controller = _(baucis.rest(_({
+        singular: singular
+    }).extend(config.baucis || {})
+    )).extend({
         requireVisibility: requireVisibility,
         requireOwnership: requireOwnership,
         queryUrlUserOwnership: function(req, res, next) {
@@ -71,6 +70,13 @@ module.exports = function(singular, config) {
         },
         ensureOwnership: function(req, res, next) {
             req.body.owner = req.user._id;
+            next();
+        },
+        preventIdModification: function(req, res, next) {
+            /* This will not affect the URL parameter 'id', so instances are still
+            accessible via URL. */
+            delete req.body._id;
+            delete req.body.id;
             next();
         }
     });
@@ -104,8 +110,16 @@ module.exports = function(singular, config) {
         controller.ensureOwnership(req, res, next);
     }]);
 
+    controller.request('put', function(req, res, next) {
+        controller.preventIdModification(req, res, next);
+    });
+
     controller.request('get head', function(req, res, next) {
         controller.requireVisibility(req, res, next);
+    });
+
+    controller.request('collection', 'del put', function(req, res, next) {
+        controller.deny(req, res, next);
     });
 
     return controller;

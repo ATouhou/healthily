@@ -379,13 +379,15 @@ module.exports = function(grunt) {
             }
         },
         nutridb: {
-            sql: {
+            mysql: {
                 dump: 'tmp/nutridb-database-sr25.sql',
-                db: 'nutridb-database-sr25',
+                database: 'nutridb_sr25_sanitized',
+                host: 'localhost',
                 username: 'root',
                 password: ''
             },
             mongo: {
+                connection: 'mongodb://localhost:27017/healthily',
                 schemas: {
                     food: require('./server/schemas/food'),
                     category: require('./server/schemas/category'),
