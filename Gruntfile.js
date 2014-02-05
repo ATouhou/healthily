@@ -380,7 +380,7 @@ module.exports = function(grunt) {
         },
         nutridb: {
             mysql: {
-                dump: 'tmp/nutridb-database-sr25.sql',
+                dump: 'nutridb-database-sr25.sql',
                 database: 'nutridb_sr25_sanitized',
                 host: 'localhost',
                 username: 'root',
