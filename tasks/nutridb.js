@@ -12,10 +12,10 @@ module.exports = function(grunt) {
             targz = require('tar.gz'),
             statusBar = require ('status-bar');
 
-        var zippedFile = path.join(config.tmp, path.basename(url)),
-            dumpFile = zippedFile.replace(path.extname(zippedFile), '');
+        var tarball = path.join(config.tmp, path.basename(url)),
+            dumpFile =  .replace(path.extname(tarball), '');
 
-        grunt.log.verbose.writeln('Tarball filename:', zippedFile);
+        grunt.log.verbose.writeln('Tarball filename:', tarball);
         grunt.log.verbose.writeln('Dump filename:', dumpFile);
 
         grunt.config('mysql.dump', dumpFile);
@@ -43,7 +43,7 @@ module.exports = function(grunt) {
 
         job.on('close', function() {
             grunt.log.ok('Download complete.');
-            new targz().extract(zippedFile, config.tmp, done);
+            new targz().extract(tarball, config.tmp, done);
         });
 
         job.on('error', function(err) {
@@ -150,7 +150,7 @@ module.exports = function(grunt) {
                     row.is_default = row.is_default == '1' ? true : false;
                     row.usda_active = row.usda_status == 'active' ? true : false;
 
-                    grunt.log.verbose('Querying DRIs for nutrient', row.nutrdesc + '.');
+                    grunt.log.verbose.writeln('Querying DRIs for nutrient', row.nutrdesc + '.');
                     
                     mysql.query('SELECT * FROM dris WHERE nutr_no = ?', [row._id], function(err, dris) {
                         
@@ -167,7 +167,7 @@ module.exports = function(grunt) {
                             return _(dri).pick('age', 'gender', 'value', 'ul');
                         });
 
-                        grunt.log.verbose('DRIs pushed to nutrient', row.nutrdesc + '.');
+                        grunt.log.verbose.writeln('DRIs pushed to nutrient', row.nutrdesc + '.');
 
                         callback(null, _(row).omit('id'));
 
@@ -186,7 +186,7 @@ module.exports = function(grunt) {
                     food.usda_active = food.usda_status == 'active' ? true : false;
                     food.survey = food.survey == 'Y' ? true : false;
 
-                    grunt.log.verbose('Querying details for', food.long_desc + '.');
+                    grunt.log.verbose.writeln('Querying details for', food.long_desc + '.');
 
                     mysql.query('SELECT nutr_val, tagname, nutrientData.nutr_no, num_data_pts, std_error, src_cd, \
                     deriv_cd, ref_ndb_no, add_nutr_mark, num_studies, min, max, df, low_eb, up_eb, stat_cmt, \
@@ -197,7 +197,7 @@ module.exports = function(grunt) {
                     SELECT footnt_no, footnt_txt FROM footnotes WHERE footnt_typ = "N" AND ndb_no = ? ORDER BY footnt_no; \
                     SELECT * FROM weights WHERE ndb_no = ? ORDER BY seq;', [food.ndb_no, food.ndb_no, food.ndb_no, food.ndb_no], function(err, result) {
                         
-                        grunt.log.verbose('Found details for', food.long_desc + '.');
+                        grunt.log.verbose.writeln('Found details for', food.long_desc + '.');
 
                         if (err) return callback(err);
 
@@ -227,7 +227,7 @@ module.exports = function(grunt) {
                             return _(item).pick('_id', 'footnt_txt');
                         });
 
-                        grunt.log.verbose('Details pushed to food', food.long_desc + '.');
+                        grunt.log.verbose.writeln('Details pushed to food', food.long_desc + '.');
 
                         callback(null, _(food).omit('id', 'ndb_no'));
 
