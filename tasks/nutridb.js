@@ -111,6 +111,7 @@ module.exports = function(grunt) {
 
         var queries = [{
             model: Category,
+            display: 'fdgrp_desc',
             query: 'SELECT * FROM foodCats WHERE id < 25 ORDER BY id',
             format: function(result, callback) {
                 async.map(result, function(row, callback) {
@@ -125,18 +126,21 @@ module.exports = function(grunt) {
             }
         }, {
             model: Nutrient,
-            query: 'SELECT * from nutrientDefs ORDER BY sr_order; \
-                    SELECT * FROM dris;',
+            display: 'nutrdesc',
+            query: 'SELECT * from nutrientDefs ORDER BY sr_order',
             format: function(result, callback) {
-                async.map(result[0], function(row, callback) {
+                async.map(result, function(row, callback) {
                     
                     row._id = row.nutr_no;
 
                     row.is_default = row.is_default == '1' ? true : false;
                     row.usda_active = row.usda_status == 'active' ? true : false;
                     
-                    try {
-                        row.dris = _(result[1]).where({ nutr_no: row.nutr_no }).map(function(dri) {
+                    mysql.query('SELECT * FROM dris WHERE nutr_no = ?', [row._id], function(err, dris) {
+                        
+                        if (err) return callback(err);
+
+                        row.dris = dris.map(function(dri) {
                             dri.value = dri.dri;
                             if (dri.gender != 'avg') {
                                 dri.age = {
@@ -145,35 +149,78 @@ module.exports = function(grunt) {
                                 };
                             } else dri.age = null;
                             return _(dri).pick('age', 'gender', 'value', 'ul');
-                        });  
-                    } catch (e) {
-                        grunt.log.warn('Nutrient', row.tagname, 'has no DRIs.');
-                    }
+                        });
 
-                    callback(null, _(row).omit('id'));
+                        callback(null, _(row).omit('id'))
+
+                    });         
 
                 }, callback);
             }
         }, {
             model: Food,
-            query: 'SELECT * FROM foodDescs; \
-                    \
-                    SELECT nutr_val, tagname, nutrientData.nutr_no, num_data_pts, std_error, src_cd, \
+            display: 'long_desc',
+            query: 'SELECT * FROM foodDescs',
+            format: function(foods, callback) {
+                async.mapLimit(foods, 50, function(food, callback) {
+
+                    food._id = food.ndb_no;
+                    food.usda_active = food.usda_status == 'active' ? true : false;
+                    food.survey = food.survey == 'Y' ? true : false;
+
+                    mysql.query('SELECT nutr_val, tagname, nutrientData.nutr_no, num_data_pts, std_error, src_cd, \
                     deriv_cd, ref_ndb_no, add_nutr_mark, num_studies, min, max, df, low_eb, up_eb, stat_cmt, \
                     cc, nutrientData.usda_status  \
                     FROM nutrientData JOIN nutrientDefs ON nutrientDefs.nutr_no=nutrientData.nutr_no \
-                    ORDER BY sr_order; \
-                    \
-                    SELECT * FROM weights ORDER BY seq;
-                    ',
-            format: function(result, callback) {
-                callback(null, result);
+                    WHERE ndb_no = ? ORDER BY sr_order; \
+                    SELECT footnt_no, footnt_txt  FROM footnotes WHERE footnt_typ = "D" AND ndb_no = ? ORDER BY footnt_no; \
+                    SELECT footnt_no, footnt_txt FROM footnotes WHERE footnt_typ = "N" AND ndb_no = ? ORDER BY footnt_no; \
+                    SELECT * FROM weights WHERE ndb_no = ? ORDER BY seq;', [food.ndb_no, food.ndb_no, food.ndb_no, food.ndb_no], function(err, result) {
+                        
+
+                        if (err) return callback(err);
+
+                        var nutrients = result[0],
+                            footnotes = result[1],
+                            nutrients_footnotes = result[2],
+                            weights = result[3];
+
+                        food.nutrients = nutrients.map(function(item) {
+                            item._id = item.nutr_no;
+                            item.usda_active = item.usda_status == 'active' ? true : false;
+                            item.footnotes = nutrients_footnotes.map(function(footnote) {
+                                footnote._id = footnote.footnt_no;
+                                return _(item).pick('_id', 'footnt_txt');
+                            });
+                            return _(item).omit('id', 'nutr_no', 'ndb_no', 'usda_status');
+                        });
+
+                        food.weights   = weights.map(function(item) {
+                            item._id = item.seq;
+                            item.usda_active = item.usda_status == 'active' ? true : false;
+                            return _(item).omit('id', 'seq', 'ndb_no', 'usda_status');
+                        });
+
+                        food.footnotes = footnotes.map(function(item) {
+                            item._id = item.footnt_no;
+                            return _(item).pick('_id', 'footnt_txt');
+                        });
+
+                        callback(null, _(food).omit('id', 'ndb_no'));
+
+                    });
+
+                }, callback);
             }
         }];
 
         var query = function(item, callback) {
+            var plural = en.pluralize(item.model.modelName).toLowerCase();
+            grunt.log.writeln('Querying', plural + '...');
             mysql.query(item.query, function(err, rows) {
                 if (err) return callback(err);
+                grunt.log.ok('Found', rows.length, plural + '.');
+                grunt.log.writeln('Formatting', plural, 'for insertion...');
                 item.format(rows, function(err, rows) {
                     item.rows = rows;
                     callback(err, item);
@@ -181,21 +228,30 @@ module.exports = function(grunt) {
             });
         };
 
-        var save = function(data, callback) {
-            async.each(data.rows, function(row, callback) {
-                model = new data.model(row);
-                model.save(callback);
+        var save = function(item, callback) {
+            var singular = item.model.modelName,
+                plural =   en.pluralize(singular).toLowerCase();
+            grunt.log.writeln('Importing', plural);
+            async.eachLimit(item.rows, 50, function(row, callback) {
+                model = new item.model(row);
+                model.save(function(err) {
+                    if (item.display) {
+                        if (!err) grunt.log.writeln(singular, row[item.display], 'saved.');
+                        else grunt.log.fail(singular, row[item.display], 'not saved.');
+                    }
+                    callback(err);
+                });
             }, function(err) {
                 if (err) return callback(err);
-                grunt.log.ok(data.rows.length, en.pluralize(data.model.modelName).toLowerCase(), 'imported');
+                grunt.log.ok(item.rows.length, plural, 'imported.');
                 callback(null);
             });
         };
 
-        async.map(queries, query, function(err, results) {
+        async.mapSeries(queries, query, function(err, results) {
             grunt.log.ok('Finished querying.');
-            async.each(results, save, function(err) {
-                if (err) return grunt.fatal('Error importing: ' + err.message);
+            async.eachSeries(results, save, function(err) {
+                if (err) return grunt.fatal('Error importing: ' + err + '.');
                 grunt.log.ok('Database imported.');
                 mysql.end();
                 done();

@@ -24,7 +24,7 @@ module.exports = {
     cho_factor: Number,
     popularity: Number,
     usda_active: Boolean,
-    footnotes: [{footnt_txt: String}],
+    footnotes: [{ _id: Number, footnt_txt: String }],
     nutrients: [{
         _id: { type: String, ref: 'Nutrient' },
         nutr_val: Number,
@@ -43,7 +43,7 @@ module.exports = {
         stat_cmt: String,
         cc: String,
         usda_active: Boolean,
-        footnotes: [{footnt_txt: String}]
+        footnotes: [{ _id: Number, footnt_txt: String }]
     }],
     weights: [{
         _id: Number,
