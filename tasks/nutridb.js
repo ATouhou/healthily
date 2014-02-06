@@ -285,7 +285,7 @@ module.exports = function(grunt) {
                 });
             }, function(err) {
                 if (err) return callback(err);
-                grunt.log.ok(total, plural, 'imported.');
+                grunt.log.ok(item.rows.length, plural, 'imported.');
                 callback(null);
             });
         };
