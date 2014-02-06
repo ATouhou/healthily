@@ -124,11 +124,7 @@ module.exports = function(grunt) {
             _     = require('underscore'),
             en    = require('lingo').en;
 
-        var mongoose = require('mongoose'),
-            db = mongoose.createConnection(config.mongo.connection);
-            Category = db.model('Category', config.mongo.schemas.category),
-            Nutrient = db.model('Nutrient', config.mongo.schemas.nutrient),
-            Food = db.model('Food', config.mongo.schemas.food);
+        var MongoClient = require('mongodb').MongoClient;
 
         var mysql = require('mysql'),
             mysql = mysql.createConnection({
@@ -145,7 +141,7 @@ module.exports = function(grunt) {
         grunt.log.writeln('Importing from MySQL database...');
 
         var queries = [{
-            model: Category,
+            model: 'Category',
             display: 'fdgrp_desc',
             query: 'SELECT * FROM foodCats WHERE id < 25 ORDER BY id',
             format: function(result, callback) {
@@ -160,7 +156,7 @@ module.exports = function(grunt) {
                 }, callback);
             }
         }, {
-            model: Nutrient,
+            model: 'Nutrient',
             display: 'nutrdesc',
             query: 'SELECT * from nutrientDefs ORDER BY sr_order',
             format: function(result, callback) {
@@ -197,7 +193,7 @@ module.exports = function(grunt) {
                 }, callback);
             }
         }, {
-            model: Food,
+            model: 'Food',
             display: false,
             query: 'SELECT * FROM foodDescs',
             format: function(foods, callback) {
@@ -259,7 +255,7 @@ module.exports = function(grunt) {
         }];
 
         var query = function(item, callback) {
-            var plural = en.pluralize(item.model.modelName).toLowerCase();
+            var plural = en.pluralize(item.model).toLowerCase();
             grunt.log.writeln('Querying', plural + '...');
             mysql.query(item.query, function(err, rows) {
                 if (err) return callback(err);
@@ -274,26 +270,16 @@ module.exports = function(grunt) {
 
         var save = function(item, callback) {
 
-            var singular = item.model.modelName,
+            var singular = item.model,
                 plural =   en.pluralize(singular).toLowerCase();
 
             grunt.log.writeln('Importing', plural + '...');
 
-            async.eachLimit(item.rows, 50, function(row, callback) {
-                model = new item.model(row);
-                model.save(function(err) {
-                    if (err) grunt.log.warn(singular, row[item.display] || row._id, 'not saved.');
-                    else if (item.display) {
-                        grunt.log.verbose.writeln(singular, row[item.display], 'saved.');
-                    }
-                    callback(err);
-                });
-            }, function(err) {
-                if (err) return callback(err);
-                grunt.log.ok(item.rows.length, plural, 'imported.');
-                callback(null);
+            MongoClient.connect(config.mongo.connection, function(err, db) {
+                var collection = db.collection(plural);
+                collection.insert(item.rows, callback);
             });
-            
+
         };
 
         async.mapSeries(queries, query, function(err, results) {
