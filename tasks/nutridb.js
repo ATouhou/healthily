@@ -1,5 +1,5 @@
 module.exports = function(grunt) {
-    
+
     grunt.registerTask('download', 'Downloads SQL dump file of NutriDB', function(args) {
         
         var config = grunt.config('nutridb.download');
@@ -28,10 +28,10 @@ module.exports = function(grunt) {
                     total: len,
                     render: function(stats) {
                         grunt.log.write('Downloading file:',
-                            this.format.storage(stats.currentSize),
+                            this.format.storage(stats.currentSize) + '/' + this.format.storage(stats.totalSize),
                       '[' + this.format.progressBar(stats.percentage) + ']',
                             this.format.percentage(stats.percentage));
-                        if (stats.percentage < 100) process.stdout.cursorTo(0);
+                        if (stats.percentage < 1) process.stdout.cursorTo(0);
                         else grunt.log.writeln('');
                     }
                 });
@@ -51,6 +51,8 @@ module.exports = function(grunt) {
     });
 
     grunt.registerTask('extract', 'Extracts NutriDB archive', function(args) {
+
+        this.requiresConfig('nutridb.extract');
 
         var config = grunt.config('nutridb.extract');
 
@@ -74,7 +76,6 @@ module.exports = function(grunt) {
 
     grunt.registerTask('mysql', 'Imports NutriDB\'s MySQL dump file to local MySQL database', function(args) {
         
-        // this.requires('download');
         this.requiresConfig('nutridb.mysql');
 
         var config = grunt.config('nutridb.mysql');
@@ -229,10 +230,10 @@ module.exports = function(grunt) {
                         food.nutrients = nutrients.map(function(item) {
                             item._id = item.nutr_no;
                             item.usda_active = item.usda_status == 'active' ? true : false;
-                            item.footnotes = nutrients_footnotes.map(function(footnote) {
+                            item.footnotes = _.chain(nutrients_footnotes).findWhere({ nutr_no: item.nutr_no }).map(function(footnote) {
                                 footnote._id = footnote.footnt_no;
                                 return _(footnote).pick('_id', 'footnt_txt');
-                            });
+                            }).value();
                             return _(item).omit('id', 'nutr_no', 'ndb_no', 'usda_status');
                         });
 
@@ -272,15 +273,19 @@ module.exports = function(grunt) {
         };
 
         var save = function(item, callback) {
+
             var singular = item.model.modelName,
                 plural =   en.pluralize(singular).toLowerCase();
-            grunt.log.writeln('Importing', plural);
+
+            grunt.log.writeln('Importing', plural + '...');
 
             async.eachLimit(item.rows, 50, function(row, callback) {
                 model = new item.model(row);
                 model.save(function(err) {
                     if (err) grunt.log.warn(singular, row[item.display] || row._id, 'not saved.');
-                    else if (item.display) grunt.log.verbose.writeln(singular, row[item.display], 'saved.');
+                    else if (item.display) {
+                        grunt.log.verbose.writeln(singular, row[item.display], 'saved.');
+                    }
                     callback(err);
                 });
             }, function(err) {
@@ -288,6 +293,7 @@ module.exports = function(grunt) {
                 grunt.log.ok(item.rows.length, plural, 'imported.');
                 callback(null);
             });
+            
         };
 
         async.mapSeries(queries, query, function(err, results) {
