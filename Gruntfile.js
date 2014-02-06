@@ -380,7 +380,7 @@ module.exports = function(grunt) {
         },
         nutridb: {
             mysql: {
-                dump: 'nutridb-database-sr25.sql',
+                dump: 'tmp/nutridb-database-sr25.sql',
                 database: 'nutridb_sr25_sanitized',
                 host: 'localhost',
                 username: 'root',
@@ -397,7 +397,11 @@ module.exports = function(grunt) {
             download: {
                 url: 'http://nutridb.org/nutridb-database-sr25.sql.gz',
                 tmp: 'tmp/'
-            } 
+            },
+            extract: {
+                input: 'tmp/nutridb-database-sr25.sql.gz',
+                output: 'tmp/nutridb-database-sr25.sql'
+            }
         }
     });
 

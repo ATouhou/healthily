@@ -3,22 +3,19 @@ module.exports = function(grunt) {
         
         var config = grunt.config('nutridb.download');
         
-        var url = config.url || 'http://nutridb.org/nutridb-database-sr25.sql.gz';
+        var url = config.url || 'http://nutridb.org/nutridb-database-sr25.gz';
 
         grunt.log.writeln('File to download:', url);
 
         var path = require('path'),
             download = require('download'),
-            targz = require('tar.gz'),
             statusBar = require ('status-bar');
 
-        var tarball = path.join(config.tmp, path.basename(url)),
-            dumpFile =  .replace(path.extname(tarball), '');
+        var file = path.join(config.tmp, path.basename(url));
 
-        grunt.log.verbose.writeln('Tarball filename:', tarball);
-        grunt.log.verbose.writeln('Dump filename:', dumpFile);
+        grunt.log.verbose.writeln('Downloaded filename:', file);
 
-        grunt.config('mysql.dump', dumpFile);
+        grunt.config('nutridb.extract.input', file);
 
         var job = download(url, config.tmp);
 
@@ -43,12 +40,34 @@ module.exports = function(grunt) {
 
         job.on('close', function() {
             grunt.log.ok('Download complete.');
-            new targz().extract(tarball, config.tmp, done);
+            done();
         });
 
         job.on('error', function(err) {
             grunt.fatal('Error downloading file: ' + err.message);
         });
+
+    });
+
+    grunt.registerTask('extract', 'Extracts NutriDB archive', function(args) {
+
+        var config = grunt.config('nutridb.extract');
+
+        var done = this.async();
+
+        var zlib   = require("zlib"),
+            fs     = require("fs"),
+            output = fs.createWriteStream(config.output);
+
+        grunt.config('nutridb.mysql.dump', output);
+
+        fs.createReadStream(config.input)
+          .pipe(zlib.createGunzip())
+          .pipe(output)
+          .on('close', function(err) {
+            if (!err) grunt.log.ok('Extraction complete.');
+            done(err);
+          });
 
     });
 
@@ -283,6 +302,6 @@ module.exports = function(grunt) {
 
     });
 
-    grunt.registerTask('nutridb', ['download', 'mysql', 'mongo']);
+    grunt.registerTask('nutridb', ['download', 'extract', 'mysql', 'mongo']);
 
 }
