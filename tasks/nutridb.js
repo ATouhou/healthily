@@ -273,11 +273,26 @@ module.exports = function(grunt) {
             var singular = item.model,
                 plural =   en.pluralize(singular).toLowerCase();
 
+            var chunk = config.mongo.chunk || 50,
+                limit = config.mongo.limit || 100;
+
             grunt.log.writeln('Importing', plural + '...');
 
             MongoClient.connect(config.mongo.connection, function(err, db) {
+                
                 var collection = db.collection(plural);
-                collection.insert(item.rows, callback);
+
+                var chunks = _.chain(item.rows).groupBy(function(item, index) {
+                    return Math.floor(index/chunk);
+                }).toArray().value();
+
+                async.eachLimit(chunks, limit, function(chunk, callback) {
+                    collection.insert(chunk, callback);
+                }, function(err) {
+                    if (!err) grunt.log.ok(item.rows.length, plural, 'imported.');
+                    callback(err);
+                });
+
             });
 
         };

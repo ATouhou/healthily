@@ -388,11 +388,8 @@ module.exports = function(grunt) {
             },
             mongo: {
                 connection: 'mongodb://localhost:27017/healthily',
-                schemas: {
-                    food: require('./server/schemas/food'),
-                    category: require('./server/schemas/category'),
-                    nutrient: require('./server/schemas/nutrient'),
-                }
+                chunk: 50,
+                limit: 3
             },
             download: {
                 url: 'http://nutridb.org/nutridb-database-sr25.sql.gz',
