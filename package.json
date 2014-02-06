@@ -24,8 +24,7 @@
     "grunt-imagine": "~0.3.2",
     "download": "~0.1.10",
     "mysql": "~2.0.1",
-    "status-bar": "~1.1.1",
-    "unzip": "~0.1.9"
+    "status-bar": "~1.1.1"
   },
   "dependencies": {
     "express": "~3.4.6",
