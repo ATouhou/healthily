@@ -1,4 +1,5 @@
 module.exports = function(grunt) {
+    
     grunt.registerTask('download', 'Downloads SQL dump file of NutriDB', function(args) {
         
         var config = grunt.config('nutridb.download');
@@ -9,7 +10,7 @@ module.exports = function(grunt) {
 
         var path = require('path'),
             download = require('download'),
-            statusBar = require ('status-bar');
+            statusBar = require('status-bar');
 
         var file = path.join(config.tmp, path.basename(url));
 
@@ -59,7 +60,7 @@ module.exports = function(grunt) {
             fs     = require("fs"),
             output = fs.createWriteStream(config.output);
 
-        grunt.config('nutridb.mysql.dump', output);
+        grunt.config('nutridb.mysql.dump', config.output);
 
         fs.createReadStream(config.input)
           .pipe(zlib.createGunzip())
@@ -196,7 +197,7 @@ module.exports = function(grunt) {
             }
         }, {
             model: Food,
-            display: 'long_desc',
+            display: false,
             query: 'SELECT * FROM foodDescs',
             format: function(foods, callback) {
                 async.mapLimit(foods, 50, function(food, callback) {
@@ -212,7 +213,7 @@ module.exports = function(grunt) {
                     cc, nutrientData.usda_status  \
                     FROM nutrientData JOIN nutrientDefs ON nutrientDefs.nutr_no=nutrientData.nutr_no \
                     WHERE ndb_no = ? ORDER BY sr_order; \
-                    SELECT footnt_no, footnt_txt  FROM footnotes WHERE footnt_typ = "D" AND ndb_no = ? ORDER BY footnt_no; \
+                    SELECT footnt_no, footnt_txt FROM footnotes WHERE footnt_typ = "D" AND ndb_no = ? ORDER BY footnt_no; \
                     SELECT footnt_no, footnt_txt FROM footnotes WHERE footnt_typ = "N" AND ndb_no = ? ORDER BY footnt_no; \
                     SELECT * FROM weights WHERE ndb_no = ? ORDER BY seq;', [food.ndb_no, food.ndb_no, food.ndb_no, food.ndb_no], function(err, result) {
                         
@@ -230,7 +231,7 @@ module.exports = function(grunt) {
                             item.usda_active = item.usda_status == 'active' ? true : false;
                             item.footnotes = nutrients_footnotes.map(function(footnote) {
                                 footnote._id = footnote.footnt_no;
-                                return _(item).pick('_id', 'footnt_txt');
+                                return _(footnote).pick('_id', 'footnt_txt');
                             });
                             return _(item).omit('id', 'nutr_no', 'ndb_no', 'usda_status');
                         });
@@ -274,18 +275,17 @@ module.exports = function(grunt) {
             var singular = item.model.modelName,
                 plural =   en.pluralize(singular).toLowerCase();
             grunt.log.writeln('Importing', plural);
+
             async.eachLimit(item.rows, 50, function(row, callback) {
                 model = new item.model(row);
                 model.save(function(err) {
-                    if (item.display) {
-                        if (!err) grunt.log.writeln(singular, row[item.display], 'saved.');
-                        else grunt.log.fail(singular, row[item.display], 'not saved.');
-                    }
+                    if (err) grunt.log.warn(singular, row[item.display] || row._id, 'not saved.');
+                    else if (item.display) grunt.log.verbose.writeln(singular, row[item.display], 'saved.');
                     callback(err);
                 });
             }, function(err) {
                 if (err) return callback(err);
-                grunt.log.ok(item.rows.length, plural, 'imported.');
+                grunt.log.ok(total, plural, 'imported.');
                 callback(null);
             });
         };
