@@ -43,19 +43,19 @@ More frontends are planned:
   3. `cd` to the local clone and execute `npm install`, this will install all the node modules required by the project
   4. `grunt build:prod` will build the project for production environments. Check out the other Grunt tasks included in `Gruntfile.js` and `/tasks` folder.
 
-## Contributing
+### Contributing
 
-  ### Reporting bugs
+#### Reporting bugs
 
-  [TODO]
+[TODO]
 
-  ### Translating
+#### Translating
 
-  [TODO]
+[TODO]
 
-  ### Documenting
+#### Documenting
 
-  [TODO]
+[TODO]
 
 ##License
 GPLv2
