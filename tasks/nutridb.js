@@ -118,7 +118,8 @@ module.exports = function(grunt) {
         this.requiresConfig('nutridb.mysql');
         this.requiresConfig('nutridb.mongo');
         
-        var config = grunt.config('nutridb');
+        var config = grunt.config('nutridb'),
+            date   = new Date();
 
         var async = require('async'),
             _     = require('underscore'),
@@ -142,6 +143,10 @@ module.exports = function(grunt) {
 
         var queries = [{
             model: 'Category',
+            indexes: [{
+                fdgrp_desc: 1,
+                usda_active: 1
+            }],
             display: 'fdgrp_desc',
             query: 'SELECT * FROM foodCats WHERE id < 25 ORDER BY id',
             format: function(result, callback) {
@@ -157,6 +162,12 @@ module.exports = function(grunt) {
             }
         }, {
             model: 'Nutrient',
+            indexes: [{
+                nutrdesc: 1,
+                is_default: 1
+            }, {
+                is_default: 1
+            }],
             display: 'nutrdesc',
             query: 'SELECT * from nutrientDefs ORDER BY sr_order',
             format: function(result, callback) {
@@ -194,6 +205,23 @@ module.exports = function(grunt) {
             }
         }, {
             model: 'Food',
+            indexes: [{
+                usda_active: 1,
+                fdgrp_cd: 1
+            }, {
+                usda_active: 1,
+                owner: 1,
+                long_desc: 1
+            }, {
+                usda_active: 1,
+                owner: 1,
+                visibility: 1,
+                long_desc: 1
+            }, {
+                usda_active: 1,
+                visibility: 1,
+                long_desc: 1
+            }],
             display: false,
             query: 'SELECT * FROM foodDescs',
             format: function(foods, callback) {
@@ -227,26 +255,36 @@ module.exports = function(grunt) {
                             item._id = item.nutr_no;
                             item.usda_active = item.usda_status == 'active' ? true : false;
                             item.footnotes = _.chain(nutrients_footnotes).findWhere({ nutr_no: item.nutr_no }).map(function(footnote) {
-                                footnote._id = footnote.footnt_no;
+                                footnote._id = Number(footnote.footnt_nWo);
                                 return _(footnote).pick('_id', 'footnt_txt');
+                            }).reject(function(footnote) {
+                                return !footnote._id || !footnote.footnt_txt;
                             }).value();
                             return _(item).omit('id', 'nutr_no', 'ndb_no', 'usda_status');
                         });
 
                         food.weights   = weights.map(function(item) {
-                            item._id = item.seq;
+                            item._id = Number(item.seq);
                             item.usda_active = item.usda_status == 'active' ? true : false;
                             return _(item).omit('id', 'seq', 'ndb_no', 'usda_status');
                         });
 
-                        food.footnotes = footnotes.map(function(item) {
-                            item._id = item.footnt_no;
-                            return _(item).pick('_id', 'footnt_txt');
-                        });
+                        food.footnotes = _.chain(footnotes).map(function(footnote) {
+                            footnote._id = Number(footnote.footnt_no);
+                            return _(footnote).pick('_id', 'footnt_txt');
+                        }).reject(function(footnote) {
+                            return !footnote._id || !footnote.footnt_txt;
+                        }).value();
 
                         grunt.log.verbose.writeln('Details pushed to food', food.long_desc + '.');
 
-                        callback(null, _(food).omit('id', 'ndb_no'));
+                        callback(null, _.chain(food).omit('id', 'ndb_no').defaults({
+                            owner: null,
+                            popularity: 0,
+                            visibility: 'public',
+                            created: date,
+                            updated: null
+                        }).value());
 
                     });
 
@@ -273,7 +311,7 @@ module.exports = function(grunt) {
             var singular = item.model,
                 plural =   en.pluralize(singular).toLowerCase();
 
-            var chunk = config.mongo.chunk || 50,
+            var chunk = config.mongo.chunk || 700,
                 limit = config.mongo.limit || 100;
 
             grunt.log.writeln('Importing', plural + '...');
@@ -287,10 +325,21 @@ module.exports = function(grunt) {
                 }).toArray().value();
 
                 async.eachLimit(chunks, limit, function(chunk, callback) {
+                    
                     collection.insert(chunk, callback);
+
                 }, function(err) {
+                    
                     if (!err) grunt.log.ok(item.rows.length, plural, 'imported.');
-                    callback(err);
+                    
+                    grunt.log.writeln('Creating indexes for', plural);
+                    
+                    async.each(item.indexes, function(index, callback) {
+                        collection.ensureIndex(index, {
+                            background: true
+                        }, callback);
+                    }, callback);
+
                 });
 
             });

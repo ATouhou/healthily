@@ -388,7 +388,7 @@ module.exports = function(grunt) {
             },
             mongo: {
                 connection: 'mongodb://localhost:27017/healthily',
-                chunk: 50,
+                chunk: 700,
                 limit: 3
             },
             download: {
